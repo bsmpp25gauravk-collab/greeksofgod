@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BSM Calculator | Greek Gods Arena</title>
+<script src="shell.js"></script>
+<style>
+.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-lg)}
+.output-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:var(--sp-sm);margin-top:var(--sp-md)}
+.out-card{background:rgba(0,0,0,.3);border:1px solid rgba(212,160,23,.15);border-radius:8px;padding:12px;text-align:center}
+.out-lbl{font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px}
+.out-val{font-family:'JetBrains Mono',monospace;font-size:1.2rem;font-weight:600;color:var(--white)}
+.pcp-result{background:rgba(0,0,0,.25);border:1px solid;border-radius:10px;padding:var(--sp-md);margin-top:var(--sp-md);display:none}
+.pcp-result.show{display:block}
+.pcp-ok{border-color:var(--c-green-line);background:var(--c-green-bg)}.pcp-arb{border-color:var(--c-red-line);background:var(--c-red-bg)}
+@media(max-width:600px){.calc-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<script>Shell.init({ page:'calculator' });</script>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div>
+      <div class="page-badge">🔢 Pricing Engine</div>
+      <h1 class="page-title">BSM Calculator</h1>
+      <p class="page-subtitle">Black-Scholes-Merton option pricing, complete Greeks, Binomial tree, and Put-Call Parity checker.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div data-tabs>
+    <div class="tab-nav">
+      <button class="tab-btn active" data-tab="bsm">Black-Scholes</button>
+      <button class="tab-btn" data-tab="binomial">Binomial Tree</button>
+      <button class="tab-btn" data-tab="pcp">Put-Call Parity</button>
+    </div>
+
+    <!-- BSM TAB -->
+    <div class="tab-panel active" data-panel="bsm">
+      <div class="calc-grid">
+        <div class="card">
+          <div class="card-title">📥 Inputs</div>
+          <div style="display:flex;flex-direction:column;gap:var(--sp-md)">
+            <div class="field-group"><label class="field-label" for="bSpot">Spot Price (₹)</label><input class="field-input" type="number" id="bSpot" value="22000" step="50"></div>
+            <div class="field-group"><label class="field-label" for="bStrike">Strike Price (₹)</label><input class="field-input" type="number" id="bStrike" value="22000" step="50"></div>
+            <div class="field-group"><label class="field-label" for="bDTE">DTE (Days)</label><input class="field-input" type="number" id="bDTE" value="7" min="1" max="365"></div>
+            <div class="field-group"><label class="field-label" for="bIV">IV / Sigma (%)</label><input class="field-input" type="number" id="bIV" value="18" step="0.1"></div>
+            <div class="field-group"><label class="field-label" for="bRate">Risk-Free Rate (%)</label><input class="field-input" type="number" id="bRate" value="6.5" step="0.1"></div>
+            <div class="field-group"><label class="field-label" for="bDiv">Dividend Yield (%)</label><input class="field-input" type="number" id="bDiv" value="1.5" step="0.1"></div>
+            <div style="display:flex;gap:var(--sp-sm)">
+              <button class="btn btn-primary" onclick="calcBSM()" style="flex:1">Calculate</button>
+              <button class="btn btn-ghost btn-sm" onclick="loadPreset('nifty_atm')">Nifty ATM</button>
+              <button class="btn btn-ghost btn-sm" onclick="loadPreset('bn_otm')">BN OTM</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">📤 Output — Option Prices</div>
+          <div class="output-grid">
+            <div class="out-card"><span class="out-lbl">Call Price</span><span class="out-val" id="bCallPrice">—</span></div>
+            <div class="out-card"><span class="out-lbl">Put Price</span><span class="out-val" id="bPutPrice">—</span></div>
+            <div class="out-card"><span class="out-lbl">d₁</span><span class="out-val" id="bD1" style="font-size:.88rem">—</span></div>
+            <div class="out-card"><span class="out-lbl">d₂</span><span class="out-val" id="bD2" style="font-size:.88rem">—</span></div>
+          </div>
+          <div class="card-title" style="margin-top:var(--sp-md)">📐 Greeks</div>
+          <div class="output-grid">
+            <div class="out-card"><span class="out-lbl">Δ Call</span><span class="out-val" id="bDeltaC" style="color:var(--c-green)">—</span></div>
+            <div class="out-card"><span class="out-lbl">Δ Put</span><span class="out-val" id="bDeltaP" style="color:var(--c-red)">—</span></div>
+            <div class="out-card"><span class="out-lbl">Γ</span><span class="out-val" id="bGamma">—</span></div>
+            <div class="out-card"><span class="out-lbl">Θ/day</span><span class="out-val" id="bTheta" style="color:var(--c-amber)">—</span></div>
+            <div class="out-card"><span class="out-lbl">ν Vega</span><span class="out-val" id="bVega">—</span></div>
+            <div class="out-card"><span class="out-lbl">ρ Call</span><span class="out-val" id="bRho">—</span></div>
+          </div>
+          <div id="bInterp" style="margin-top:var(--sp-md);font-size:.88rem;color:var(--text-sub);line-height:1.6;display:none"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BINOMIAL TAB -->
+    <div class="tab-panel" data-panel="binomial">
+      <div class="calc-grid">
+        <div class="card">
+          <div class="card-title">📥 Inputs</div>
+          <div style="display:flex;flex-direction:column;gap:var(--sp-md)">
+            <div class="field-group"><label class="field-label" for="bnSpot">Spot Price (₹)</label><input class="field-input" type="number" id="bnSpot" value="22000" step="50"></div>
+            <div class="field-group"><label class="field-label" for="bnStrike">Strike Price (₹)</label><input class="field-input" type="number" id="bnStrike" value="22000" step="50"></div>
+            <div class="field-group"><label class="field-label" for="bnDTE">DTE (Days)</label><input class="field-input" type="number" id="bnDTE" value="7" min="1"></div>
+            <div class="field-group"><label class="field-label" for="bnIV">IV (%)</label><input class="field-input" type="number" id="bnIV" value="18" step="0.1"></div>
+            <div class="field-group"><label class="field-label" for="bnRate">Risk-Free Rate (%)</label><input class="field-input" type="number" id="bnRate" value="6.5" step="0.1"></div>
+            <div class="field-group">
+              <label class="field-label" for="bnType">Option Type</label>
+              <select class="field-input" id="bnType"><option value="european">European</option><option value="american">American</option></select>
+            </div>
+            <button class="btn btn-primary" onclick="calcBinomial()">Calculate</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">📤 Binomial Results</div>
+          <div class="output-grid">
+            <div class="out-card"><span class="out-lbl">Call Price</span><span class="out-val" id="bnCall">—</span></div>
+            <div class="out-card"><span class="out-lbl">Put Price</span><span class="out-val" id="bnPut">—</span></div>
+            <div class="out-card"><span class="out-lbl">Up Factor (u)</span><span class="out-val" id="bnU">—</span></div>
+            <div class="out-card"><span class="out-lbl">Down Factor (d)</span><span class="out-val" id="bnD">—</span></div>
+            <div class="out-card"><span class="out-lbl">Risk-Neutral p</span><span class="out-val" id="bnP">—</span></div>
+            <div class="out-card"><span class="out-lbl">Steps</span><span class="out-val" id="bnSteps">100</span></div>
+          </div>
+          <p style="font-size:.82rem;color:var(--text-sub);margin-top:var(--sp-md);line-height:1.6">Binomial tree uses the Cox-Ross-Rubinstein (CRR) model with 100 steps. For European options, BSM and Binomial converge. For American puts, Binomial may give higher values due to early exercise premium.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- PUT-CALL PARITY TAB -->
+    <div class="tab-panel" data-panel="pcp">
+      <div class="calc-grid">
+        <div class="card">
+          <div class="card-title">📥 Inputs</div>
+          <div style="display:flex;flex-direction:column;gap:var(--sp-md)">
+            <div class="field-group"><label class="field-label" for="pcpCall">Call Price (Market) ₹</label><input class="field-input" type="number" id="pcpCall" value="185" step="0.5"></div>
+            <div class="field-group"><label class="field-label" for="pcpPut">Put Price (Market) ₹</label><input class="field-input" type="number" id="pcpPut" value="165" step="0.5"></div>
+            <div class="field-group"><label class="field-label" for="pcpSpot">Spot Price ₹</label><input class="field-input" type="number" id="pcpSpot" value="22000" step="50"></div>
+            <div class="field-group"><label class="field-label" for="pcpStrike">Strike Price ₹</label><input class="field-input" type="number" id="pcpStrike" value="22000" step="50"></div>
+            <div class="field-group"><label class="field-label" for="pcpDTE">DTE (Days)</label><input class="field-input" type="number" id="pcpDTE" value="7" min="1"></div>
+            <div class="field-group"><label class="field-label" for="pcpRate">Risk-Free Rate (%)</label><input class="field-input" type="number" id="pcpRate" value="6.5" step="0.1"></div>
+            <button class="btn btn-primary" onclick="checkPCP()">Check Parity</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">⚖️ Put-Call Parity Result</div>
+          <div style="background:rgba(0,0,0,.3);border:1px solid rgba(212,160,23,.15);border-radius:8px;padding:12px 16px;font-family:'JetBrains Mono',monospace;font-size:.75rem;color:rgba(212,160,23,.9);line-height:2;margin-bottom:var(--sp-md)">
+            C − P = S − K × e^(−rT)<br>
+            Call − Put = Spot − PV(Strike)
+          </div>
+          <div class="pcp-result" id="pcpResult">
+            <p id="pcpText" style="font-size:.9rem;line-height:1.6"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="cta-strip">
+  <div class="cta-strip-inner">
+    <div class="cta-strip-text"><h3>Prices Calculated — Now Build Your Strategy</h3><p>Use these Greeks in the Strategy Lab to construct and visualise your trade.</p></div>
+    <div class="cta-strip-actions"><a href="strategy-lab.html" class="btn btn-primary">📐 Strategy Lab →</a><a href="volatility-engine.html" class="btn btn-ghost btn-sm">⚡ Volatility Engine</a></div>
+  </div>
+</div>
+
+<script>
+// ── Pure JS BSM (no scipy) ──
+function erf(x){const t=1/(1+0.3275911*Math.abs(x));const poly=t*(0.254829592+t*(-0.284496736+t*(1.421413741+t*(-1.453152027+t*1.061405429))));const r=1-poly*Math.exp(-x*x);return x>=0?r:-r;}
+function normCDF(x){return 0.5*(1+erf(x/Math.sqrt(2)));}
+function normPDF(x){return Math.exp(-0.5*x*x)/Math.sqrt(2*Math.PI);}
+function bsm(S,K,T,r,sigma,q){
+  if(T<=0)return{call:Math.max(S-K,0),put:Math.max(K-S,0),d1:0,d2:0,deltaC:S>K?1:0,deltaP:S>K?0:-1,gamma:0,theta:0,vega:0,rho:0};
+  const d1=(Math.log(S/K)+(r-q+0.5*sigma*sigma)*T)/(sigma*Math.sqrt(T));
+  const d2=d1-sigma*Math.sqrt(T);
+  const call=S*Math.exp(-q*T)*normCDF(d1)-K*Math.exp(-r*T)*normCDF(d2);
+  const put=K*Math.exp(-r*T)*normCDF(-d2)-S*Math.exp(-q*T)*normCDF(-d1);
+  const deltaC=Math.exp(-q*T)*normCDF(d1);
+  const deltaP=Math.exp(-q*T)*(normCDF(d1)-1);
+  const gamma=Math.exp(-q*T)*normPDF(d1)/(S*sigma*Math.sqrt(T));
+  const theta=(-S*Math.exp(-q*T)*normPDF(d1)*sigma/(2*Math.sqrt(T))-r*K*Math.exp(-r*T)*normCDF(d2)+q*S*Math.exp(-q*T)*normCDF(d1))/365;
+  const vega=S*Math.exp(-q*T)*normPDF(d1)*Math.sqrt(T)*0.01;
+  const rho=K*T*Math.exp(-r*T)*normCDF(d2)*0.01;
+  return{call,put,d1,d2,deltaC,deltaP,gamma,theta,vega,rho};
+}
+function loadPreset(p){
+  const presets={nifty_atm:{bSpot:22000,bStrike:22000,bDTE:4,bIV:18,bRate:6.5,bDiv:1.5},bn_otm:{bSpot:48500,bStrike:49200,bDTE:4,bIV:22,bRate:6.5,bDiv:0}};
+  const pr=presets[p];if(!pr)return;
+  Object.entries(pr).forEach(([k,v])=>{const el=document.getElementById(k);if(el)el.value=v;});
+  calcBSM();
+}
+function calcBSM(){
+  const S=parseFloat(document.getElementById('bSpot').value);
+  const K=parseFloat(document.getElementById('bStrike').value);
+  const dte=parseFloat(document.getElementById('bDTE').value);
+  const iv=parseFloat(document.getElementById('bIV').value)/100;
+  const r=parseFloat(document.getElementById('bRate').value)/100;
+  const q=parseFloat(document.getElementById('bDiv').value)/100;
+  const T=dte/252;
+  const res=bsm(S,K,T,r,iv,q);
+  document.getElementById('bCallPrice').textContent='₹'+res.call.toFixed(2);
+  document.getElementById('bPutPrice').textContent='₹'+res.put.toFixed(2);
+  document.getElementById('bD1').textContent=res.d1.toFixed(4);
+  document.getElementById('bD2').textContent=res.d2.toFixed(4);
+  document.getElementById('bDeltaC').textContent=res.deltaC.toFixed(4);
+  document.getElementById('bDeltaP').textContent=res.deltaP.toFixed(4);
+  document.getElementById('bGamma').textContent=res.gamma.toFixed(6);
+  document.getElementById('bTheta').textContent='₹'+res.theta.toFixed(2);
+  document.getElementById('bVega').textContent='₹'+res.vega.toFixed(2);
+  document.getElementById('bRho').textContent='₹'+res.rho.toFixed(2);
+  const itm=S>K?'ITM Call':'S=K=ATM';
+  const interp=document.getElementById('bInterp');
+  interp.style.display='block';
+  interp.innerHTML=`<strong style="color:var(--text)">Interpretation:</strong> ${S===K?'ATM':S>K?'Call ITM / Put OTM':'Call OTM / Put ITM'} option. Delta ${res.deltaC.toFixed(2)} implies ~${Math.round(res.deltaC*100)}% probability of call expiring ITM. Daily theta decay of ₹${Math.abs(res.theta).toFixed(2)} per lot. A 1% IV change shifts option value by ₹${res.vega.toFixed(2)}.`;
+  Shell.XP.add(10);
+}
+function calcBinomial(){
+  const S=parseFloat(document.getElementById('bnSpot').value);
+  const K=parseFloat(document.getElementById('bnStrike').value);
+  const dte=parseFloat(document.getElementById('bnDTE').value);
+  const sigma=parseFloat(document.getElementById('bnIV').value)/100;
+  const r=parseFloat(document.getElementById('bnRate').value)/100;
+  const isAmerican=document.getElementById('bnType').value==='american';
+  const N=100;const T=dte/252;const dt=T/N;
+  const u=Math.exp(sigma*Math.sqrt(dt));const d=1/u;
+  const p=(Math.exp(r*dt)-d)/(u-d);const disc=Math.exp(-r*dt);
+  document.getElementById('bnU').textContent=u.toFixed(4);
+  document.getElementById('bnD').textContent=d.toFixed(4);
+  document.getElementById('bnP').textContent=p.toFixed(4);
+  // Build terminal nodes
+  let callNodes=[],putNodes=[];
+  for(let i=0;i<=N;i++){const price=S*Math.pow(u,N-i)*Math.pow(d,i);callNodes.push(Math.max(price-K,0));putNodes.push(Math.max(K-price,0));}
+  for(let j=N-1;j>=0;j--){for(let i=0;i<=j;i++){callNodes[i]=disc*(p*callNodes[i]+(1-p)*callNodes[i+1]);putNodes[i]=disc*(p*putNodes[i]+(1-p)*putNodes[i+1]);if(isAmerican){const price=S*Math.pow(u,j-i)*Math.pow(d,i);callNodes[i]=Math.max(callNodes[i],Math.max(price-K,0));putNodes[i]=Math.max(putNodes[i],Math.max(K-price,0));}}}
+  document.getElementById('bnCall').textContent='₹'+callNodes[0].toFixed(2);
+  document.getElementById('bnPut').textContent='₹'+putNodes[0].toFixed(2);
+  Shell.XP.add(10);
+}
+function checkPCP(){
+  const C=parseFloat(document.getElementById('pcpCall').value);
+  const P=parseFloat(document.getElementById('pcpPut').value);
+  const S=parseFloat(document.getElementById('pcpSpot').value);
+  const K=parseFloat(document.getElementById('pcpStrike').value);
+  const dte=parseFloat(document.getElementById('pcpDTE').value);
+  const r=parseFloat(document.getElementById('pcpRate').value)/100;
+  const T=dte/252;
+  const pvK=K*Math.exp(-r*T);
+  const lhs=C-P;const rhs=S-pvK;
+  const diff=lhs-rhs;const absDiff=Math.abs(diff);
+  const res=document.getElementById('pcpResult');const txt=document.getElementById('pcpText');
+  res.className='pcp-result show '+(absDiff>5?'pcp-arb':'pcp-ok');
+  txt.innerHTML=`<strong style="color:${absDiff>5?'var(--c-red)':'var(--c-green)'}">${absDiff>5?'⚠️ PARITY VIOLATED — Potential Arbitrage':'✅ PARITY HOLDS — Markets Fairly Priced'}</strong><br><br>C − P = ₹${lhs.toFixed(2)}&nbsp;&nbsp;|&nbsp;&nbsp;S − PV(K) = ₹${rhs.toFixed(2)}<br>Difference: ₹${diff.toFixed(2)}<br><br>${absDiff>5?'The call-put spread deviates significantly from theoretical parity. This may indicate a dividend adjustment, liquidity premium, or a genuine arbitrage opportunity.':'Call-put spread equals spot minus PV of strike within normal bid-ask spread tolerance.'}`;
+  Shell.XP.add(10);
+}
+// Auto-calculate on load
+setTimeout(calcBSM,100);
+</script>
+</body>
+</html>

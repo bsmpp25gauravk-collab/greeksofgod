@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Study Hub — Options Greeks | Greek Gods Arena</title>
+<script src="shell.js"></script>
+<style>
+.greek-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:var(--sp-xl)}
+.gk-btn{background:rgba(0,0,0,.3);border:1px solid rgba(212,160,23,.2);border-radius:8px;padding:10px 20px;font-family:'Cinzel',serif;font-size:.8rem;color:var(--text-sub);cursor:pointer;transition:all .2s;letter-spacing:.04em}
+.gk-btn:hover{border-color:rgba(212,160,23,.4);color:var(--gold)}
+.gk-btn.active{background:var(--gold-dim);border-color:var(--gold-line);color:var(--gold)}
+.greek-panel{display:none}.greek-panel.active{display:block}
+.greek-header{display:flex;align-items:center;gap:var(--sp-lg);margin-bottom:var(--sp-xl);flex-wrap:wrap}
+.greek-symbol{font-family:'Cinzel',serif;font-size:4rem;color:var(--gold);line-height:1;flex-shrink:0}
+.greek-intro h2{font-family:'Cinzel',serif;font-size:1.6rem;color:var(--gold);letter-spacing:.04em;margin-bottom:6px}
+.greek-intro p{font-size:.95rem;color:var(--text-sub);line-height:1.65;max-width:500px}
+.quick-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--sp-md);margin-bottom:var(--sp-xl)}
+.quick-card{background:rgba(0,0,0,.25);border:1px solid rgba(212,160,23,.12);border-radius:10px;padding:var(--sp-md)}
+.qc-label{font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px}
+.qc-val{font-family:'JetBrains Mono',monospace;font-size:.95rem;color:var(--white);line-height:1.4}
+.formula-box{background:rgba(0,0,0,.35);border:1px solid rgba(212,160,23,.18);border-radius:8px;padding:12px 16px;font-family:'JetBrains Mono',monospace;font-size:.78rem;color:rgba(212,160,23,.9);line-height:1.7;margin:var(--sp-md) 0}
+.example-box{background:rgba(91,158,244,.06);border:1px solid rgba(91,158,244,.2);border-radius:10px;padding:var(--sp-md) var(--card-pad);margin:var(--sp-md) 0}
+.example-box h4{font-family:'Cinzel',serif;font-size:.82rem;color:var(--c-blue);margin-bottom:8px;letter-spacing:.04em}
+.example-box p{font-size:.88rem;color:var(--text-sub);line-height:1.6}
+.insight-list{list-style:none}
+.insight-list li{display:flex;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.9rem;color:var(--text-sub);line-height:1.5;align-items:flex-start}
+.insight-list li:last-child{border-bottom:none}
+.insight-list li::before{content:'▸';color:var(--gold);flex-shrink:0}
+.range-demo{background:rgba(0,0,0,.2);border-radius:10px;padding:var(--sp-md);margin-top:var(--sp-md)}
+.range-label{font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;display:flex;justify-content:space-between;margin-bottom:6px}
+.range-track{height:8px;background:linear-gradient(90deg,var(--c-green),var(--gold),var(--c-red));border-radius:4px;position:relative}
+.range-marker{position:absolute;top:-4px;width:16px;height:16px;border-radius:50%;background:var(--white);border:2px solid var(--gold);transform:translateX(-50%)}
+</style>
+</head>
+<body>
+<script>Shell.init({ page:'study' });</script>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div>
+      <div class="page-badge">📚 Study Hub</div>
+      <h1 class="page-title">Options Greeks</h1>
+      <p class="page-subtitle">The complete reference for Delta, Gamma, Theta, Vega, and higher-order Greeks — with intuition, formulas, and real trading examples.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="greek-nav">
+    <button class="gk-btn active" onclick="showGreek('delta')">Δ Delta</button>
+    <button class="gk-btn" onclick="showGreek('gamma')">Γ Gamma</button>
+    <button class="gk-btn" onclick="showGreek('theta')">Θ Theta</button>
+    <button class="gk-btn" onclick="showGreek('vega')">ν Vega</button>
+    <button class="gk-btn" onclick="showGreek('rho')">ρ Rho</button>
+    <button class="gk-btn" onclick="showGreek('higher')">Higher Order</button>
+    <button class="gk-btn" onclick="showGreek('portfolio')">Portfolio Greeks</button>
+  </div>
+
+  <!-- DELTA -->
+  <div class="greek-panel active" id="panel-delta">
+    <div class="greek-header">
+      <span class="greek-symbol">Δ</span>
+      <div class="greek-intro"><h2>Delta — Directional Sensitivity</h2><p>Delta measures how much an option's price changes for every ₹1 move in the underlying. It is also the probability proxy for expiry in-the-money.</p></div>
+    </div>
+    <div class="quick-cards">
+      <div class="quick-card"><span class="qc-label">Call Range</span><span class="qc-val">0.0 to +1.0<br><span style="color:var(--text-dim);font-size:.72rem">ATM call ≈ 0.50</span></span></div>
+      <div class="quick-card"><span class="qc-label">Put Range</span><span class="qc-val">−1.0 to 0.0<br><span style="color:var(--text-dim);font-size:.72rem">ATM put ≈ −0.50</span></span></div>
+      <div class="quick-card"><span class="qc-label">ITM Option</span><span class="qc-val">Delta → ±1.0<br><span style="color:var(--text-dim);font-size:.72rem">Moves like the stock</span></span></div>
+      <div class="quick-card"><span class="qc-label">OTM Option</span><span class="qc-val">Delta → 0.0<br><span style="color:var(--text-dim);font-size:.72rem">Lottery ticket behaviour</span></span></div>
+    </div>
+    <div class="formula-box">Δ(Call) = N(d₁)&nbsp;&nbsp;&nbsp;&nbsp;Δ(Put) = N(d₁) − 1<br>where N() is the cumulative standard normal distribution</div>
+    <div class="example-box"><h4>Trading Example — Nifty Iron Condor</h4><p>You sell a Nifty 22,500 CE (Δ = +0.25) and a Nifty 21,500 PE (Δ = −0.25). Net portfolio delta = 0.00 — delta neutral. A 100-point Nifty move has no immediate P&amp;L impact (only gamma starts creating directional exposure).</p></div>
+    <h3 style="font-family:'Cinzel',serif;color:var(--gold);font-size:.95rem;letter-spacing:.05em;margin-bottom:var(--sp-md)">Key Insights</h3>
+    <ul class="insight-list">
+      <li>Delta is additive across a portfolio — sum all position deltas to get net directional exposure</li>
+      <li>A delta of 0.30 implies approximately 30% probability of expiring ITM (rough approximation)</li>
+      <li>Selling a delta-neutral straddle is not risk-free — gamma creates directional exposure as price moves</li>
+      <li>As expiry approaches, ITM options delta → ±1 and OTM options delta → 0, rapidly</li>
+      <li>For every rupee of underlying move, a portfolio's value changes by (Net Delta × Lot Size × ₹1)</li>
+    </ul>
+    <div class="accordion" style="margin-top:var(--sp-md)"><button class="acc-trigger" aria-expanded="false"><span class="acc-trigger-title">📊 Delta Hedging Mechanics</span><span class="acc-icon">▾</span></button><div class="acc-body"><p style="color:var(--text-sub);font-size:.9rem;line-height:1.65">Market makers delta hedge by buying/selling the underlying to stay delta-neutral. This dynamic hedging creates the "gamma scalping" phenomenon. When you sell options, market makers buy them and delta hedge — which is why large option open interest at a strike creates a "magnet" effect as expiry approaches.</p></div></div>
+  </div>
+
+  <!-- GAMMA -->
+  <div class="greek-panel" id="panel-gamma">
+    <div class="greek-header">
+      <span class="greek-symbol">Γ</span>
+      <div class="greek-intro"><h2>Gamma — Rate of Delta Change</h2><p>Gamma measures how much delta changes per ₹1 move in the underlying. It is the enemy of premium sellers near expiry and the friend of premium buyers.</p></div>
+    </div>
+    <div class="quick-cards">
+      <div class="quick-card"><span class="qc-label">Always Positive</span><span class="qc-val">For long options<br><span style="color:var(--text-dim);font-size:.72rem">Negative for short options</span></span></div>
+      <div class="quick-card"><span class="qc-label">Highest At</span><span class="qc-val">ATM + Near Expiry<br><span style="color:var(--text-dim);font-size:.72rem">Spikes in final 48 hours</span></span></div>
+      <div class="quick-card"><span class="qc-label">Seller's Risk</span><span class="qc-val">Negative Gamma<br><span style="color:var(--text-dim);font-size:.72rem">Losses accelerate with moves</span></span></div>
+      <div class="quick-card"><span class="qc-label">Buyer's Edge</span><span class="qc-val">Positive Gamma<br><span style="color:var(--text-dim);font-size:.72rem">Gains accelerate with moves</span></span></div>
+    </div>
+    <div class="formula-box">Γ = N'(d₁) / (S × σ × √T)<br>where N'() is the standard normal PDF, S = spot, σ = IV, T = time to expiry</div>
+    <div class="example-box"><h4>Why Gamma Kills Option Sellers at Expiry</h4><p>On Monday, Bank Nifty is at 48,500. Your short 49,000 CE has Δ = 0.25 and Γ = 0.008. If BN moves to 49,000 (+500 points), delta becomes 0.25 + (0.008 × 500) = 0.65. Your short call is now deep ITM and losing money at the rate of ₹0.65 per rupee of BN movement — not ₹0.25. On Thursday (DTE 1), gamma of an ATM option can be 10–15× higher.</p></div>
+    <ul class="insight-list">
+      <li>Gamma is the reason "max pain" at ATM strikes near expiry can produce violent last-hour moves</li>
+      <li>Long straddles have high positive gamma — they benefit from large moves in either direction</li>
+      <li>Iron Condors are "short gamma" — they need the underlying to stay still</li>
+      <li>The Decay Optimizer's "AVOID at DTE 1–2" rule is primarily a gamma management rule, not theta</li>
+      <li>Gamma risk is not linear — it accelerates. A 2× larger move creates a 4× larger gamma P&amp;L impact</li>
+    </ul>
+  </div>
+
+  <!-- THETA -->
+  <div class="greek-panel" id="panel-theta">
+    <div class="greek-header">
+      <span class="greek-symbol">Θ</span>
+      <div class="greek-intro"><h2>Theta — Time Decay</h2><p>Theta measures how much an option loses in value each day due to the passage of time alone, assuming all other factors remain constant.</p></div>
+    </div>
+    <div class="quick-cards">
+      <div class="quick-card"><span class="qc-label">Always Negative</span><span class="qc-val">For long options<br><span style="color:var(--text-dim);font-size:.72rem">Positive for short options</span></span></div>
+      <div class="quick-card"><span class="qc-label">Highest At</span><span class="qc-val">ATM + Near Expiry<br><span style="color:var(--text-dim);font-size:.72rem">Follows √time (non-linear)</span></span></div>
+      <div class="quick-card"><span class="qc-label">Weekend Effect</span><span class="qc-val">3 days on Monday<br><span style="color:var(--text-dim);font-size:.72rem">Friday close to Monday open</span></span></div>
+      <div class="quick-card"><span class="qc-label">Gamma Trade-off</span><span class="qc-val">Theta vs Gamma<br><span style="color:var(--text-dim);font-size:.72rem">Always in opposition</span></span></div>
+    </div>
+    <div class="formula-box">Θ ≈ −[S × N'(d₁) × σ] / [2√T] − r × K × e^(−rT) × N(d₂)<br>Simplified daily: Θ_daily = Full Theta / 252 trading days</div>
+    <div class="example-box"><h4>The Theta-Gamma Trade-off</h4><p>Selling options gives you positive theta (you collect time decay daily) but negative gamma (you suffer when the underlying moves). This is the fundamental trade-off in options. Premium sellers collect steady theta rent but face gamma blowup risk. Premium buyers pay theta rent daily but profit explosively from large moves. The Volatility Engine helps you decide which side to be on based on current IV regime.</p></div>
+    <ul class="insight-list">
+      <li>Theta decay follows a square root of time curve — the final 30% of time contains 50%+ of decay</li>
+      <li>Weekend theta: positions lose ~3 days of theta from Friday close to Monday open</li>
+      <li>Deep ITM and deep OTM options have very little theta — the most theta is always at ATM</li>
+      <li>An Iron Condor with ₹180 credit at DTE 4 earns roughly ₹25–₹45/day from theta</li>
+      <li>Theta is meaningless without considering gamma — always analyse the ratio (Theta/Gamma)</li>
+    </ul>
+  </div>
+
+  <!-- VEGA -->
+  <div class="greek-panel" id="panel-vega">
+    <div class="greek-header">
+      <span class="greek-symbol">ν</span>
+      <div class="greek-intro"><h2>Vega — Volatility Sensitivity</h2><p>Vega measures how much an option's price changes for every 1% change in implied volatility. It is the core driver of premium selling and buying decisions.</p></div>
+    </div>
+    <div class="quick-cards">
+      <div class="quick-card"><span class="qc-label">Long Options</span><span class="qc-val">Positive Vega<br><span style="color:var(--text-dim);font-size:.72rem">Profit from IV expansion</span></span></div>
+      <div class="quick-card"><span class="qc-label">Short Options</span><span class="qc-val">Negative Vega<br><span style="color:var(--text-dim);font-size:.72rem">Profit from IV contraction</span></span></div>
+      <div class="quick-card"><span class="qc-label">Highest At</span><span class="qc-val">ATM + Longer DTE<br><span style="color:var(--text-dim);font-size:.72rem">Longer = more vega</span></span></div>
+      <div class="quick-card"><span class="qc-label">Vol Premium</span><span class="qc-val">IV &gt; HV on average<br><span style="color:var(--text-dim);font-size:.72rem">~2–3% historically</span></span></div>
+    </div>
+    <div class="formula-box">ν = S × N'(d₁) × √T<br>In practice: ν is quoted as ₹ change per 1% change in IV</div>
+    <div class="example-box"><h4>Vega and the Volatility Risk Premium</h4><p>Historically, implied volatility (IV) exceeds realised volatility (HV) by 2–4 percentage points on average. This "volatility risk premium" means short vega (selling options) has a positive expected return over time. The Volatility Engine's IV vs HV comparison directly measures this premium — when IV exceeds HV by 3+ points, vega sellers have a significant edge.</p></div>
+    <ul class="insight-list">
+      <li>Iron Condors are short vega — they profit when IV falls after a spike (post-event IV crush)</li>
+      <li>Calendar spreads are long vega — they profit from IV expansion</li>
+      <li>Vega decreases as expiry approaches (weekly options have less vega than monthly)</li>
+      <li>A 5% IV drop on a position with −0.50 vega per lot generates ₹2,500 profit on a 50-lot position</li>
+      <li>Post-RBI and post-Budget are classic short-vega plays — IV crushes as uncertainty resolves</li>
+    </ul>
+  </div>
+
+  <!-- RHO -->
+  <div class="greek-panel" id="panel-rho">
+    <div class="greek-header">
+      <span class="greek-symbol">ρ</span>
+      <div class="greek-intro"><h2>Rho — Interest Rate Sensitivity</h2><p>Rho measures how much an option's price changes for every 1% change in the risk-free interest rate. The least discussed Greek, but relevant for longer-dated options.</p></div>
+    </div>
+    <div class="quick-cards">
+      <div class="quick-card"><span class="qc-label">Calls</span><span class="qc-val">Positive Rho<br><span style="color:var(--text-dim);font-size:.72rem">Higher rates = higher calls</span></span></div>
+      <div class="quick-card"><span class="qc-label">Puts</span><span class="qc-val">Negative Rho<br><span style="color:var(--text-dim);font-size:.72rem">Higher rates = lower puts</span></span></div>
+      <div class="quick-card"><span class="qc-label">Weekly Options</span><span class="qc-val">Negligible Rho<br><span style="color:var(--text-dim);font-size:.72rem">Too short-dated</span></span></div>
+      <div class="quick-card"><span class="qc-label">India Context</span><span class="qc-val">RBI rate decisions<br><span style="color:var(--text-dim);font-size:.72rem">Repo rate changes</span></span></div>
+    </div>
+    <div class="formula-box">ρ(Call) = K × T × e^(−rT) × N(d₂)<br>ρ(Put) = −K × T × e^(−rT) × N(−d₂)</div>
+    <ul class="insight-list" style="margin-top:var(--sp-md)">
+      <li>For weekly options (DTE 0–7), rho is so small it is essentially irrelevant in practice</li>
+      <li>Rho becomes significant for options with 3+ months to expiry (LEAPS, monthly far-dated)</li>
+      <li>When RBI raises rates: calls become slightly more expensive, puts become slightly cheaper</li>
+      <li>In the Indian context, the relevant rate is the 91-day T-bill yield (currently ~6.5%)</li>
+    </ul>
+  </div>
+
+  <!-- HIGHER ORDER -->
+  <div class="greek-panel" id="panel-higher">
+    <div class="greek-header">
+      <span class="greek-symbol">⁺</span>
+      <div class="greek-intro"><h2>Higher-Order Greeks</h2><p>Second and third-order Greeks used by professional options market makers to manage complex positions.</p></div>
+    </div>
+    <div class="quick-cards">
+      <div class="quick-card"><span class="qc-label">Vanna</span><span class="qc-val">∂Δ/∂σ<br><span style="color:var(--text-dim);font-size:.72rem">Delta sensitivity to IV change</span></span></div>
+      <div class="quick-card"><span class="qc-label">Charm</span><span class="qc-val">∂Δ/∂t<br><span style="color:var(--text-dim);font-size:.72rem">Delta decay over time</span></span></div>
+      <div class="quick-card"><span class="qc-label">Vomma</span><span class="qc-val">∂ν/∂σ<br><span style="color:var(--text-dim);font-size:.72rem">Vega sensitivity to IV</span></span></div>
+      <div class="quick-card"><span class="qc-label">Speed</span><span class="qc-val">∂Γ/∂S<br><span style="color:var(--text-dim);font-size:.72rem">Rate of gamma change</span></span></div>
+    </div>
+    <ul class="insight-list" style="margin-top:var(--sp-md)">
+      <li><strong style="color:var(--text)">Vanna</strong> — As IV falls after an event, deltas change even without the underlying moving. Market makers must delta hedge again due to vanna, creating additional buying/selling pressure</li>
+      <li><strong style="color:var(--text)">Charm</strong> — OTM option deltas decay toward zero as expiry approaches. Understanding charm helps explain why OTM options become worthless quickly in the final 2 days</li>
+      <li><strong style="color:var(--text)">Vomma</strong> — When IV is very low, vega itself is less sensitive. When IV is very high, small IV changes create large vega P&amp;L. Vomma explains why long options bought at low IV are "cheap"</li>
+      <li><strong style="color:var(--text)">Speed</strong> — The rate at which gamma changes. Near expiry at ATM strikes, speed is extreme — small moves dramatically alter your gamma exposure</li>
+    </ul>
+  </div>
+
+  <!-- PORTFOLIO GREEKS -->
+  <div class="greek-panel" id="panel-portfolio">
+    <div class="greek-header">
+      <span class="greek-symbol">Σ</span>
+      <div class="greek-intro"><h2>Portfolio Greeks</h2><p>How individual option Greeks combine at the portfolio level — the foundation of risk management.</p></div>
+    </div>
+    <div class="example-box"><h4>Portfolio Aggregation Rules</h4><p>Portfolio Delta = Σ (Position Delta × Quantity × Lot Size) for all positions. The same applies to Gamma, Theta, and Vega. A diversified options portfolio that is delta-neutral but has large net vega is still exposed — a volatility spike will hurt it regardless of spot direction.</p></div>
+    <ul class="insight-list">
+      <li>Portfolio delta tells you your directional exposure: +100 delta means you gain ₹100 per 1-point Nifty rise</li>
+      <li>Portfolio theta tells you how much you earn or lose per day from time decay across all positions</li>
+      <li>Portfolio vega tells you your sensitivity to an IV change: −500 vega means a 1% IV drop earns ₹500</li>
+      <li>The ratio of Theta/Vega tells you how much daily theta you earn per unit of vega risk taken</li>
+      <li>Risk limits: set maximum net delta, vega, and gamma limits as a percentage of account size</li>
+      <li>Correlation between underlyings matters — Nifty and Bank Nifty are 0.85+ correlated, so separate positions are not independent risks</li>
+    </ul>
+    <div style="margin-top:var(--sp-md)"><a href="portfolio.html" class="btn btn-primary">📊 Open Portfolio Dashboard →</a></div>
+  </div>
+</div>
+
+<div class="cta-strip">
+  <div class="cta-strip-inner">
+    <div class="cta-strip-text"><h3>Ready to Apply Your Knowledge?</h3><p>Start with the Volatility Engine to identify the current market regime.</p></div>
+    <div class="cta-strip-actions"><a href="volatility-engine.html" class="btn btn-primary">⚡ Start Volatility Engine →</a><a href="calculator.html" class="btn btn-ghost btn-sm">🔢 BSM Calculator</a></div>
+  </div>
+</div>
+
+<script>
+function showGreek(id){
+  document.querySelectorAll('.gk-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.greek-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>

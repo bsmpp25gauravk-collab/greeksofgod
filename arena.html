@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arena — Gamified Challenges | Greek Gods Arena</title>
+<script src="shell.js"></script>
+<style>
+.level-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--sp-md);margin-bottom:var(--sp-xl)}
+.level-card{background:var(--card-bg);border:var(--card-border);border-radius:var(--card-radius);padding:var(--sp-md);text-align:center;transition:transform .2s;cursor:pointer}
+.level-card:hover{transform:translateY(-2px)}
+.level-card.locked{opacity:.4;cursor:not-allowed}
+.level-icon{font-size:2rem;margin-bottom:8px}
+.level-name{font-family:'Cinzel',serif;font-size:.82rem;color:var(--gold);margin-bottom:4px}
+.level-req{font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--text-dim)}
+.xp-bar-wrap{background:rgba(0,0,0,.3);border:1px solid rgba(212,160,23,.2);border-radius:10px;padding:var(--sp-md) var(--sp-lg);margin-bottom:var(--sp-xl)}
+.xp-bar-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.xp-label{font-family:'Cinzel',serif;font-size:.82rem;color:var(--gold)}
+.xp-count{font-family:'JetBrains Mono',monospace;font-size:1rem;color:var(--gold)}
+.xp-track{height:10px;background:rgba(255,255,255,.07);border-radius:5px;overflow:hidden}
+.xp-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--c-green));border-radius:5px;transition:width .8s ease}
+.badge-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:var(--sp-sm)}
+.badge-card{background:rgba(0,0,0,.3);border:1px solid rgba(212,160,23,.12);border-radius:10px;padding:var(--sp-md);text-align:center;transition:all .2s}
+.badge-card.earned{border-color:rgba(212,160,23,.5);background:rgba(212,160,23,.08)}
+.badge-card.locked{opacity:.3}
+.badge-icon{font-size:1.8rem;margin-bottom:6px}
+.badge-name{font-family:'Cinzel',serif;font-size:.65rem;color:var(--gold);letter-spacing:.04em}
+.badge-pts{font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--text-dim);margin-top:3px}
+.challenge-card{background:linear-gradient(135deg,rgba(13,14,26,.95),rgba(18,20,42,.95));border:1px solid rgba(212,160,23,.25);border-radius:var(--card-radius);padding:var(--sp-lg);margin-bottom:var(--sp-md)}
+.ch-header{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:var(--sp-md);margin-bottom:var(--sp-lg)}
+.ch-title{font-family:'Cinzel',serif;font-size:1rem;color:var(--gold);margin-bottom:4px}
+.ch-sub{font-size:.88rem;color:var(--text-sub)}
+.ch-pts{background:var(--gold-dim);border:1px solid var(--gold-line);border-radius:8px;padding:8px 14px;text-align:center}
+.ch-pts-val{font-family:'Cinzel',serif;font-size:1.2rem;color:var(--gold);display:block}
+.ch-pts-lbl{font-family:'JetBrains Mono',monospace;font-size:.55rem;color:var(--text-dim)}
+.q-text{font-size:.95rem;color:var(--text-sub);line-height:1.6;margin-bottom:var(--sp-lg);padding:var(--sp-md);background:rgba(0,0,0,.2);border-radius:8px;border-left:3px solid var(--gold)}
+.ans-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:var(--sp-md)}
+.ans-btn{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:var(--sp-md);text-align:left;cursor:pointer;transition:all .2s;color:var(--white);font-size:.88rem;line-height:1.4}
+.ans-btn:hover{border-color:rgba(212,160,23,.4);background:rgba(212,160,23,.06)}
+.ans-btn.correct{border-color:var(--c-green-line);background:var(--c-green-bg)}
+.ans-btn.wrong{border-color:var(--c-red-line);background:var(--c-red-bg)}
+.ch-feedback{background:rgba(0,0,0,.28);border-radius:8px;padding:var(--sp-md);border-left:3px solid var(--gold);display:none;margin-top:var(--sp-sm)}
+.ch-feedback.show{display:block}
+.ch-feedback p{font-size:.88rem;color:var(--text-sub);line-height:1.5;margin-bottom:8px}
+@media(max-width:600px){.ans-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<script>Shell.init({ page:'arena', workflowStep:5 });</script>
+<div class="page-header">
+  <div class="page-header-inner">
+    <div>
+      <div class="page-badge">🏟 Arena · Final Step</div>
+      <h1 class="page-title">Trading Arena</h1>
+      <p class="page-subtitle">Gamified options challenges, XP progression, badge collection, and scenario simulation — test what you've learned.</p>
+    </div>
+    <span class="signal-badge sb-gold" style="background:var(--gold-dim);border-color:var(--gold-line);color:var(--gold)"><span class="sb-dot" style="background:var(--gold)"></span>XP: <span id="xpDisplay">0</span></span>
+  </div>
+</div>
+
+<div class="section">
+  <!-- XP Bar -->
+  <div class="xp-bar-wrap">
+    <div class="xp-bar-header"><span class="xp-label" id="levelName">Level 1 — Novice Trader</span><span class="xp-count"><span id="xpVal">0</span> XP</span></div>
+    <div class="xp-track"><div class="xp-fill" id="xpFill" style="width:0%"></div></div>
+    <p style="font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--text-dim);margin-top:6px" id="xpNext">250 XP to next level</p>
+  </div>
+
+  <!-- Levels -->
+  <h2 class="section-title">🏆 Progression Levels</h2>
+  <div class="level-grid" id="levelGrid"></div>
+
+  <!-- Active Challenge -->
+  <h2 class="section-title">⚔️ Daily Challenge</h2>
+  <div class="challenge-card" id="challengeArea"></div>
+
+  <!-- Badges -->
+  <h2 class="section-title">🎖 Badge Collection</h2>
+  <div class="badge-grid" id="badgeGrid"></div>
+</div>
+
+<div class="cta-strip">
+  <div class="cta-strip-inner">
+    <div class="cta-strip-text"><h3>Keep Practising — Revisit the Modules</h3><p>Use the full 4-step platform workflow to deepen your edge before the next challenge.</p></div>
+    <div class="cta-strip-actions"><a href="volatility-engine.html" class="btn btn-primary">⚡ Start Full Analysis →</a><a href="study.html" class="btn btn-ghost btn-sm">📚 Study Hub</a></div>
+  </div>
+</div>
+
+<script>
+const LEVELS=[{name:'Novice Trader',icon:'🌱',xp:0,desc:'Just starting out'},{name:'Option Apprentice',icon:'📊',xp:250,desc:'Learning the Greeks'},{name:'Theta Hunter',icon:'⏱',xp:750,desc:'Mastering decay'},{name:'Volatility Scout',icon:'⚡',xp:1500,desc:'Reading IV patterns'},{name:'Strategy Architect',icon:'📐',xp:3000,desc:'Building complex structures'},{name:'Risk Alchemist',icon:'⚗️',xp:6000,desc:'Portfolio-level thinking'},{name:'Market Oracle',icon:'🔮',xp:12000,desc:'Institutional-level insight'}];
+const BADGES=[{name:'First Calc',icon:'🔢',pts:50,key:'first_calc'},{name:'IV Analyst',icon:'⚡',pts:100,key:'iv_analyst'},{name:'Theta Master',icon:'⏱',pts:150,key:'theta_master'},{name:'Strategy Builder',icon:'📐',pts:100,key:'strategy_builder'},{name:'Risk Manager',icon:'🛡',pts:200,key:'risk_manager'},{name:'Game Winner',icon:'🎯',pts:100,key:'game_win'},{name:'Streak x5',icon:'🔥',pts:250,key:'streak_5'},{name:'Portfolio Pro',icon:'📊',pts:200,key:'portfolio_pro'},{name:'Condor King',icon:'🦅',pts:300,key:'condor_king'},{name:'Vol Reader',icon:'📡',pts:150,key:'vol_reader'},{name:'Event Trader',icon:'📅',pts:200,key:'event_trader'},{name:'PCP Expert',icon:'⚖️',pts:100,key:'pcp_expert'},{name:'Fast Fingers',icon:'⚡',pts:50,key:'fast_fingers'},{name:'Knowledge Base',icon:'📚',pts:150,key:'knowledge_base'},{name:'Arena Legend',icon:'🏆',pts:500,key:'arena_legend'}];
+const CHALLENGES=[
+  {title:'The Iron Condor Thesis',pts:200,q:'Bank Nifty is at 48,500. IV Rank is 68%. DTE is 4. No major events. You sell the 49,200 CE and 47,800 PE (Iron Condor with wings). What is the PRIMARY reason this trade makes theoretical sense?',answers:['High IV Rank means options are rich — you are selling premium that should mean-revert downward','DTE 4 is in the optimal theta decay window — accelerating decay for the next 3 days','Bank Nifty is range-bound historically — statistical edge for the condor','All three reasons combine — IV richness + timing + statistical edge is the correct comprehensive answer'],correct:3,explanation:'All three reasons are correct simultaneously. IV Rank 68% confirms the premium is rich. DTE 4 is the optimal theta window. And Iron Condors have a positive expected value when all three conditions align. Recognising multi-factor confluence is what separates systematic traders from gamblers.'},
+  {title:'The Gamma Trap',pts:250,q:'It is Thursday morning, 1 DTE. Your Iron Condor has made ₹85 profit (47% of the ₹180 credit). Bank Nifty is at 48,200 — safely between your short strikes. What should you do?',answers:['Hold to expiry — almost all premium will decay by 3:30 PM','Exit now — you are close to the 50% target and gamma risk is extreme at 1 DTE','Roll to next week — capture more premium','Leg out of only the profitable spread, hold the other'],correct:1,explanation:'Exit immediately. At 1 DTE, gamma is explosive. A 200-point BN move (which happens regularly) can flip your position from +₹85 to -₹180 in under an hour. The rule is clear: exit at 50% profit, never hold near expiry for the last ₹10. The asymmetry of risk is too severe.'},
+  {title:'The IV Regime Question',pts:200,q:'You see: Nifty IV Rank = 22%, IV Percentile = 18%, HV (20d) = 19%, Current IV = 14%. What is the single most important implication for your trading?',answers:['Sell Iron Condor — IV is low so position risk is minimal','Buy straddle or strangle — IV is at multi-year lows and options are historically cheap','Skip the week — no clear signal in neutral territory','Buy calls only — low IV means market is calm and will drift up'],correct:1,explanation:'IV Rank 22% and IV Percentile 18% confirm options are at historical lows. More critically, IV (14%) is BELOW HV (19%) — meaning options are pricing less movement than the market is actually delivering. This is a strong buy-premium signal. Long straddles or strangles position for mean-reversion in IV, which historically follows within 2–6 weeks.'},
+  {title:'The RBI Trade',pts:300,q:'RBI policy decision is in 3 days. Current IV Rank: 72%. DTE of current weekly: 4 days (includes the RBI event). Your Iron Condor model shows excellent theta. What do you do?',answers:['Enter the Iron Condor — IV Rank 72% is too good to pass up','Enter at half size — compromise between IV and event risk','Skip entirely — the RBI binary event overrides the IV signal','Buy a straddle instead to play the event outcome'],correct:2,explanation:'Skip entirely. A binary event within the expiry window is a hard stop to premium selling regardless of IV Rank. The event can cause a 2–4% gap that immediately breaches both strikes of an Iron Condor. Enter the week after the RBI decision — post-event IV crush will be your entry, not the pre-event spike.'},
+  {title:'The Greeks Linkage',pts:250,q:'Your portfolio shows: Net Delta = +65, Net Theta = +₹420/day, Net Vega = −₹3,200. Which statement best describes your overall risk?',answers:['Perfectly fine — positive theta means you are collecting premium daily','Directional risk is the primary concern — delta of +65 exceeds the ±50 limit and needs hedging','Vega risk is primary — a 1% IV rise loses ₹3,200 and needs hedging','Both delta breach AND vega breach must be addressed urgently'],correct:0,explanation:'While positive theta and moderate vega are manageable, the critical issue is delta = +65 which breaches the ±50 limit. This means your portfolio gains ₹65 per 1-point Nifty rise but loses ₹65 per 1-point fall — significant directional exposure. You need to hedge delta by selling futures/calls or buying puts. Theta collection is irrelevant if a 3% Nifty fall wipes the week\'s premium.'},
+];
+let curChal=0,chalAns=false;
+function initUI(){
+  // XP display
+  const xp=Shell.XP.get();
+  document.getElementById('xpVal').textContent=xp;
+  document.getElementById('xpDisplay').textContent=xp;
+  // Find level
+  let lvl=0;for(let i=0;i<LEVELS.length;i++){if(xp>=LEVELS[i].xp)lvl=i;}
+  const cur=LEVELS[lvl];const next=LEVELS[lvl+1];
+  document.getElementById('levelName').textContent='Level '+(lvl+1)+' — '+cur.name;
+  if(next){const prog=(xp-cur.xp)/(next.xp-cur.xp)*100;document.getElementById('xpFill').style.width=Math.min(prog,100)+'%';document.getElementById('xpNext').textContent=(next.xp-xp)+' XP to '+next.name;}
+  else{document.getElementById('xpFill').style.width='100%';document.getElementById('xpNext').textContent='Max level reached!';}
+  // Level grid
+  document.getElementById('levelGrid').innerHTML=LEVELS.map((l,i)=>`<div class="level-card${xp<l.xp?' locked':''}"><div class="level-icon">${l.icon}</div><div class="level-name">Lvl ${i+1}<br>${l.name}</div><div class="level-req">${l.xp===0?'Start':''+l.xp+' XP'}</div></div>`).join('');
+  // Badges
+  const earned=JSON.parse(localStorage.getItem('gg_badges')||'[]');
+  document.getElementById('badgeGrid').innerHTML=BADGES.map(b=>`<div class="badge-card${earned.includes(b.key)?' earned':' locked'}"><div class="badge-icon">${b.icon}</div><div class="badge-name">${b.name}</div><div class="badge-pts">${b.pts} XP</div></div>`).join('');
+  // Load challenge
+  loadChallenge(curChal%CHALLENGES.length);
+}
+function loadChallenge(i){
+  const ch=CHALLENGES[i];chalAns=false;
+  document.getElementById('challengeArea').innerHTML=`
+  <div class="ch-header"><div><div class="ch-title">${ch.title}</div><div class="ch-sub">Select the best answer — think carefully.</div></div><div class="ch-pts"><span class="ch-pts-val">${ch.pts}</span><span class="ch-pts-lbl">XP REWARD</span></div></div>
+  <div class="q-text">${ch.q}</div>
+  <div class="ans-grid">${ch.answers.map((a,j)=>`<button class="ans-btn" onclick="answerChal(${j},${ch.correct},\`${ch.explanation.replace(/`/g,"'")}\`,${ch.pts})">${a}</button>`).join('')}</div>
+  <div class="ch-feedback" id="chalFeedback"><p id="chalFBText"></p><button class="btn btn-outline btn-sm" onclick="nextChallenge()">Next Challenge →</button></div>
+  <div style="font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--text-dim);margin-top:var(--sp-md)">Challenge ${i+1} of ${CHALLENGES.length}</div>`;
+}
+function answerChal(sel,correct,exp,pts){if(chalAns)return;chalAns=true;
+  document.querySelectorAll('.ans-btn').forEach((b,i)=>{if(i===correct)b.classList.add('correct');else if(i===sel&&sel!==correct)b.classList.add('wrong');b.disabled=true;});
+  const isRight=sel===correct;if(isRight){Shell.XP.add(pts);if(Math.random()>0.5){const badges=JSON.parse(localStorage.getItem('gg_badges')||'[]');if(!badges.includes('game_win')){badges.push('game_win');localStorage.setItem('gg_badges',JSON.stringify(badges));}}initUI();}
+  const fb=document.getElementById('chalFeedback');document.getElementById('chalFBText').textContent=(isRight?'✅ Excellent! +'+pts+' XP — ':'❌ Not quite — ')+exp;fb.style.borderLeftColor=isRight?'var(--c-green)':'var(--c-red)';fb.classList.add('show');
+}
+function nextChallenge(){curChal=(curChal+1)%CHALLENGES.length;loadChallenge(curChal);}
+initUI();
+</script>
+</body>
+</html>

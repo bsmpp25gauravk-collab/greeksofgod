@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Strategy Lab | Greek Gods Arena</title>
+<script src="shell.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+.strat-selector{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:var(--sp-lg)}
+.strat-btn{background:rgba(0,0,0,.3);border:1px solid rgba(212,160,23,.15);border-radius:8px;padding:10px;text-align:left;cursor:pointer;transition:all .2s;color:var(--white)}
+.strat-btn:hover,.strat-btn.active{border-color:rgba(212,160,23,.5);background:rgba(212,160,23,.08)}
+.strat-btn-name{font-family:'Cinzel',serif;font-size:.75rem;color:var(--gold);display:block;margin-bottom:3px}
+.strat-btn-type{font-family:'JetBrains Mono',monospace;font-size:.55rem;color:var(--text-dim)}
+.payoff-wrap{position:relative;width:100%;height:320px;margin:var(--sp-md) 0}
+.details-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:var(--sp-sm);margin-top:var(--sp-md)}
+.det-card{background:rgba(0,0,0,.25);border:1px solid rgba(212,160,23,.12);border-radius:8px;padding:10px;text-align:center}
+.det-lbl{font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--text-dim);text-transform:uppercase;display:block;margin-bottom:5px}
+.det-val{font-family:'JetBrains Mono',monospace;font-size:.95rem;color:var(--white);font-weight:600}
+</style>
+</head>
+<body>
+<script>Shell.init({ page:'strategy', workflowStep:3 });</script>
+<div class="page-header">
+  <div class="page-header-inner">
+    <div>
+      <div class="page-badge">📐 Module 2 · Third Step</div>
+      <h1 class="page-title">Strategy Lab</h1>
+      <p class="page-subtitle">Strategy builder, payoff visualiser, and comparison engine — for all major options structures.</p>
+    </div>
+  </div>
+</div>
+<div class="section">
+  <h2 class="section-title">Select Strategy</h2>
+  <div class="strat-selector" id="stratSelector"></div>
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--sp-md);margin-bottom:var(--sp-md)">
+      <span style="font-family:'Cinzel',serif;font-size:.88rem;color:var(--gold)" id="stratName">Iron Condor</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="field-group" style="flex-direction:row;align-items:center;gap:8px">
+          <label class="field-label" for="slSpot">Spot ₹</label>
+          <input class="field-input" type="number" id="slSpot" value="22000" step="50" style="width:100px" oninput="drawChart()">
+        </div>
+        <div class="field-group" style="flex-direction:row;align-items:center;gap:8px">
+          <label class="field-label" for="slPrem">Prem ₹</label>
+          <input class="field-input" type="number" id="slPrem" value="180" step="10" style="width:80px" oninput="drawChart()">
+        </div>
+      </div>
+    </div>
+    <div class="payoff-wrap"><canvas id="payoffChart"></canvas></div>
+    <div class="details-grid" id="detailCards"></div>
+    <div class="interp-box mt-md" id="stratInterp" style="display:none"></div>
+  </div>
+
+  <div style="margin-top:var(--sp-xl)">
+    <h2 class="section-title">📚 All Strategies Reference</h2>
+    <div style="display:flex;flex-direction:column;gap:8px" id="allStratAccordions"></div>
+  </div>
+</div>
+<div class="cta-strip">
+  <div class="cta-strip-inner">
+    <div class="cta-strip-text"><h3>Strategy Selected — Monitor Your Portfolio</h3><p>Add this trade to the Portfolio Dashboard to track Greeks exposure across all positions.</p></div>
+    <div class="cta-strip-actions"><a href="portfolio.html" class="btn btn-primary">📊 Portfolio Dashboard →</a><a href="decay-optimizer.html" class="btn btn-ghost btn-sm">← Decay Optimizer</a></div>
+  </div>
+</div>
+<script>
+const STRATS=[
+  {name:'Iron Condor',type:'SELL · NEUTRAL',desc:'Sell OTM call spread + OTM put spread. Collect premium. Profit if underlying stays range-bound. Defined risk on both sides.',payoff:(S,spot,prem)=>{const w=prem*1.8;const lo=spot-w;const hi=spot+w;if(S<lo-prem*0.5)return-prem*0.5;if(S>hi+prem*0.5)return-prem*0.5;if(S>=lo&&S<=hi)return prem;return S<lo?prem-(lo-S):prem-(S-hi);},details:{maxProfit:'Premium received',maxLoss:'Wing width − Premium',breakeven:'±1σ from spot',legs:'4 legs',bias:'Range-bound',ivBias:'HIGH IV — Sell'}},
+  {name:'Iron Butterfly',type:'SELL · NEUTRAL',desc:'Sell ATM straddle, buy OTM strangle as wings. Higher premium than Iron Condor but narrower profit zone.',payoff:(S,spot,prem)=>{const w=prem*1.2;if(Math.abs(S-spot)<10)return prem;if(S<spot-w||S>spot+w)return-prem*0.8;return prem-Math.abs(S-spot)/w*prem*1.8;},details:{maxProfit:'Premium at ATM',maxLoss:'Wing width − Premium',breakeven:'±(Premium / Lot)',legs:'4 legs',bias:'Pinned at strike',ivBias:'HIGH IV — Sell'}},
+  {name:'Short Strangle',type:'SELL · NEUTRAL',desc:'Sell OTM call + OTM put. Higher premium than condor. Undefined risk — naked short options require high margin.',payoff:(S,spot,prem)=>{const r=prem*1.5;const lo=spot-r;const hi=spot+r;if(S>=lo&&S<=hi)return prem;if(S<lo)return prem-(lo-S);return prem-(S-hi);},details:{maxProfit:'Premium received',maxLoss:'Unlimited (both sides)',breakeven:'Spot ± Premium',legs:'2 legs',bias:'Range-bound',ivBias:'HIGH IV (>60% rank)'}},
+  {name:'Short Straddle',type:'SELL · NEUTRAL',desc:'Sell ATM call + ATM put. Maximum theta collection. Maximum gamma risk. Only for very stable underlyings.',payoff:(S,spot,prem)=>{const loss=Math.abs(S-spot);return prem-loss;},details:{maxProfit:'Premium received',maxLoss:'Unlimited',breakeven:'Spot ± Premium',legs:'2 legs',bias:'Pinned at spot',ivBias:'HIGH IV — Extreme caution'}},
+  {name:'Bull Put Spread',type:'SELL · BULLISH',desc:'Sell OTM put, buy further OTM put. Collect credit with bullish bias. Defined risk, lower margin than naked short.',payoff:(S,spot,prem)=>{const lo=spot-prem*1.5;if(S>=spot)return prem;if(S<=lo)return-prem*0.8;return prem-(spot-S)/prem*prem*0.5;},details:{maxProfit:'Premium received',maxLoss:'Spread width − Premium',breakeven:'Short strike − Premium',legs:'2 legs',bias:'Mildly bullish',ivBias:'Moderate IV'}},
+  {name:'Bear Call Spread',type:'SELL · BEARISH',desc:'Sell OTM call, buy further OTM call. Collect credit with bearish bias. Defined risk.',payoff:(S,spot,prem)=>{const hi=spot+prem*1.5;if(S<=spot)return prem;if(S>=hi)return-prem*0.8;return prem-(S-spot)/prem*prem*0.5;},details:{maxProfit:'Premium received',maxLoss:'Spread width − Premium',breakeven:'Short strike + Premium',legs:'2 legs',bias:'Mildly bearish',ivBias:'Moderate IV'}},
+  {name:'Long Straddle',type:'BUY · VOLATILE',desc:'Buy ATM call + ATM put. Profit from large move in either direction. Best at low IV (IV Rank < 30%).',payoff:(S,spot,prem)=>Math.abs(S-spot)-prem,details:{maxProfit:'Unlimited',maxLoss:'Premium paid',breakeven:'Spot ± Premium',legs:'2 legs',bias:'Large move either way',ivBias:'LOW IV — Buy'}},
+  {name:'Long Strangle',type:'BUY · VOLATILE',desc:'Buy OTM call + OTM put. Cheaper than straddle. Needs larger move to profit.',payoff:(S,spot,prem)=>{const move=Math.abs(S-spot)-prem*1.2;return move>0?move:-prem*0.85;},details:{maxProfit:'Unlimited',maxLoss:'Premium paid',breakeven:'Spot ± 1.2×Premium',legs:'2 legs',bias:'Very large move',ivBias:'LOW IV — Buy'}},
+  {name:'Long Call',type:'BUY · BULLISH',desc:'Buy OTM/ATM call. Simple directional bullish bet. Loss limited to premium paid.',payoff:(S,spot,prem)=>Math.max(S-spot,0)-prem,details:{maxProfit:'Unlimited (S rises)',maxLoss:'Premium paid',breakeven:'Spot + Premium',legs:'1 leg',bias:'Strongly bullish',ivBias:'LOW IV preferred'}},
+  {name:'Long Put',type:'BUY · BEARISH',desc:'Buy OTM/ATM put. Simple directional bearish bet. Useful for portfolio hedging.',payoff:(S,spot,prem)=>Math.max(spot-S,0)-prem,details:{maxProfit:'Spot − 0 (large fall)',maxLoss:'Premium paid',breakeven:'Spot − Premium',legs:'1 leg',bias:'Strongly bearish',ivBias:'LOW IV preferred'}},
+  {name:'Bull Call Spread',type:'BUY · BULLISH',desc:'Buy lower strike call, sell higher strike call. Reduced cost bullish debit spread.',payoff:(S,spot,prem)=>{const hi=spot+prem*2;if(S<=spot)return-prem;if(S>=hi)return prem;return -prem+(S-spot)/(prem*2)*prem*2;},details:{maxProfit:'Spread width − Debit',maxLoss:'Premium paid',breakeven:'Lower strike + Debit',legs:'2 legs',bias:'Moderately bullish',ivBias:'Any IV'}},
+  {name:'Calendar Spread',type:'BUY · VEGA',desc:'Sell near-term ATM option, buy same-strike longer-dated option. Profits from time structure and IV expansion.',payoff:(S,spot,prem)=>{const diff=Math.abs(S-spot);return diff<prem?prem*0.6-diff*0.3:-prem*0.4;},details:{maxProfit:'Near expiry premium',maxLoss:'Net debit paid',breakeven:'Narrow range at ATM',legs:'2 legs',bias:'Neutral — vega play',ivBias:'LOW IV — Buy vega'}},
+];
+let chart=null,curStrat=0;
+function initSelector(){
+  const sel=document.getElementById('stratSelector');
+  sel.innerHTML=STRATS.map((s,i)=>`<button class="strat-btn${i===0?' active':''}" onclick="selectStrat(${i})"><span class="strat-btn-name">${s.name}</span><span class="strat-btn-type">${s.type}</span></button>`).join('');
+  const acc=document.getElementById('allStratAccordions');
+  acc.innerHTML=STRATS.map(s=>`<div class="accordion"><button class="acc-trigger" aria-expanded="false"><span class="acc-trigger-title">${s.name} <span style="font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--text-dim)">${s.type}</span></span><span class="acc-icon">▾</span></button><div class="acc-body"><p style="color:var(--text-sub);font-size:.9rem;line-height:1.6;margin-bottom:var(--sp-sm)">${s.desc}</p><div style="display:flex;flex-wrap:wrap;gap:var(--sp-sm)">${Object.entries(s.details).map(([k,v])=>`<div style="background:rgba(0,0,0,.2);border:1px solid rgba(212,160,23,.12);border-radius:6px;padding:6px 10px"><span style="font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--text-dim);display:block;text-transform:uppercase">${k}</span><span style="font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--white)">${v}</span></div>`).join('')}</div></div></div>`).join('');
+}
+function selectStrat(i){curStrat=i;document.querySelectorAll('.strat-btn').forEach((b,j)=>b.classList.toggle('active',j===i));drawChart();}
+function drawChart(){
+  const s=STRATS[curStrat];const spot=parseFloat(document.getElementById('slSpot').value)||22000;const prem=parseFloat(document.getElementById('slPrem').value)||180;
+  document.getElementById('stratName').textContent=s.name;
+  const range=prem*3;const pts=60;const labels=[];const data=[];
+  for(let i=0;i<=pts;i++){const price=spot-range+i*(2*range/pts);labels.push(Math.round(price));data.push(parseFloat(s.payoff(price,spot,prem).toFixed(2)));}
+  const colors=data.map(v=>v>=0?'rgba(77,255,145,.25)':'rgba(255,77,77,.25)');
+  const bColors=data.map(v=>v>=0?'rgba(77,255,145,.8)':'rgba(255,77,77,.8)');
+  if(chart)chart.destroy();
+  chart=new Chart(document.getElementById('payoffChart'),{
+    type:'bar',data:{labels,datasets:[{data,backgroundColor:colors,borderColor:bColors,borderWidth:1,borderRadius:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'P&L: ₹'+ctx.parsed.y}}},scales:{x:{ticks:{maxTicksLimit:10,color:'rgba(255,255,255,.4)'},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'rgba(255,255,255,.4)',callback:v=>'₹'+v},grid:{color:'rgba(255,255,255,.06)'},title:{display:true,text:'P&L (₹)',color:'rgba(255,255,255,.4)'}}}}
+  });
+  const d=s.details;
+  document.getElementById('detailCards').innerHTML=Object.entries(d).map(([k,v])=>`<div class="det-card"><span class="det-lbl">${k}</span><span class="det-val" style="font-size:.78rem">${v}</span></div>`).join('');
+  const si=document.getElementById('stratInterp');si.style.display='block';
+  si.innerHTML=`<div class="interp-item"><span class="interp-dot"></span>${s.desc}</div><div class="interp-item"><span class="interp-dot"></span><strong style="color:var(--text)">IV Bias:</strong> ${d.ivBias}</div>`;
+  Shell.XP.add(5);
+}
+initSelector();setTimeout(drawChart,200);
+// Pre-fill from URL params (e.g. ?strategy=Iron+Condor from Volatility Engine)
+const ps=Shell.getParam('strategy');if(ps){const idx=STRATS.findIndex(s=>s.name.toLowerCase()===decodeURIComponent(ps).toLowerCase());if(idx>=0)selectStrat(idx);}
+</script>
+</body>
+</html>

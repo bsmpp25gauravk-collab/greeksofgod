@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Decay Optimizer — Weekly Theta Timing | Greek Gods Arena</title>
+<script src="shell.js"></script>
+<style>
+.input-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:var(--sp-md);margin-bottom:var(--sp-md)}
+.signal-box{display:none;border-radius:12px;padding:var(--sp-lg);border:2px solid;margin-top:var(--sp-md)}
+.signal-box.show{display:block}
+.sb-optimal{border-color:var(--c-green-line);background:var(--c-green-bg)}
+.sb-aggressive{border-color:var(--c-amber-line);background:var(--c-amber-bg)}
+.sb-avoid{border-color:var(--c-red-line);background:var(--c-red-bg)}
+.sb-observe{border-color:var(--c-blue-line);background:var(--c-blue-bg)}
+.signal-title{font-family:'Cinzel',serif;font-size:1.1rem;letter-spacing:.05em;margin-bottom:8px}
+.signal-desc{font-size:.9rem;color:var(--text-sub);line-height:1.6}
+.risk-meter-wrap{margin-top:var(--sp-md)}
+.risk-lbl{display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:var(--fs-xs);color:var(--text-sub);margin-bottom:5px}
+.risk-track{height:10px;background:rgba(255,255,255,.07);border-radius:5px;overflow:hidden}
+.risk-bar{height:100%;border-radius:5px;transition:width 1s cubic-bezier(.34,1.56,.64,1)}
+.dte-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:var(--sp-md)}
+.dte-cell{border-radius:8px;padding:10px 4px;text-align:center;cursor:pointer;border:2px solid transparent;transition:all .2s}
+.dte-cell .day{font-family:'Cinzel',serif;font-size:.7rem;color:var(--text-dim);display:block;margin-bottom:3px}
+.dte-cell .num{font-family:'JetBrains Mono',monospace;font-size:1rem;font-weight:600;display:block;margin-bottom:3px}
+.dte-cell .sig{font-family:'JetBrains Mono',monospace;font-size:.5rem;display:block}
+.dte-cell.optimal{background:var(--c-green-bg);border-color:var(--c-green-line)}.dte-cell.optimal .num{color:var(--c-green)}.dte-cell.optimal .sig{color:var(--c-green)}
+.dte-cell.aggressive{background:var(--c-amber-bg);border-color:var(--c-amber-line)}.dte-cell.aggressive .num{color:var(--c-amber)}.dte-cell.aggressive .sig{color:var(--c-amber)}
+.dte-cell.avoid{background:var(--c-red-bg);border-color:var(--c-red-line)}.dte-cell.avoid .num{color:var(--c-red)}.dte-cell.avoid .sig{color:var(--c-red)}
+.dte-cell.observe{background:var(--c-blue-bg);border-color:var(--c-blue-line)}.dte-cell.observe .num{color:var(--c-blue)}.dte-cell.observe .sig{color:var(--c-blue)}
+.dte-cell.active{transform:scale(1.08);box-shadow:0 0 0 2px var(--gold)}
+.decay-table{width:100%;border-collapse:collapse}
+.decay-table th{background:rgba(0,0,0,.3);font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--text-dim);padding:8px 12px;text-align:left;letter-spacing:.05em}
+.decay-table td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.04);font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--text-sub)}
+.decay-table tr:hover td{background:rgba(255,255,255,.02)}
+.decay-bar{height:6px;border-radius:3px;background:linear-gradient(90deg,var(--c-green),var(--gold),var(--c-red));display:inline-block;vertical-align:middle;margin-left:8px}
+.event-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:var(--sp-sm)}
+.event-card{border:1px solid;border-radius:10px;padding:var(--sp-md)}
+.ev-high{border-color:var(--c-red-line);background:var(--c-red-bg)}.ev-med{border-color:var(--c-amber-line);background:var(--c-amber-bg)}.ev-low{border-color:var(--c-blue-line);background:var(--c-blue-bg)}
+.ev-name{font-family:'Cinzel',serif;font-size:.82rem;color:var(--gold);margin-bottom:4px}
+.ev-impact{font-family:'JetBrains Mono',monospace;font-size:.58rem;margin-bottom:6px}
+.ev-desc{font-size:.82rem;color:var(--text-sub);line-height:1.45}
+.lifecycle-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--sp-sm)}
+.lc-step{background:rgba(0,0,0,.25);border:1px solid rgba(212,160,23,.12);border-radius:10px;padding:var(--sp-md);position:relative}
+.lc-step-num{position:absolute;top:-8px;left:12px;background:var(--gold);color:#0d0e1a;font-family:'Cinzel',serif;font-size:.65rem;font-weight:700;padding:1px 8px;border-radius:10px}
+.lc-step-title{font-family:'Cinzel',serif;font-size:.8rem;color:var(--gold);margin-bottom:6px;margin-top:8px}
+.lc-step-detail{font-size:.82rem;color:var(--text-sub);line-height:1.5}
+.game-card{background:linear-gradient(135deg,rgba(13,14,26,.95),rgba(18,20,42,.95));border:1px solid rgba(212,160,23,.25);border-radius:var(--card-radius);padding:var(--sp-lg)}
+.game-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:var(--sp-md);margin-bottom:var(--sp-lg)}
+.game-title{font-family:'Cinzel',serif;font-size:1rem;color:var(--gold);margin-bottom:4px}
+.score-box{text-align:center;background:rgba(0,0,0,.3);border:1px solid rgba(212,160,23,.2);border-radius:8px;padding:8px 16px;min-width:80px}
+.score-val{font-family:'JetBrains Mono',monospace;font-size:1.5rem;color:var(--gold);display:block}
+.score-lbl{font-family:'JetBrains Mono',monospace;font-size:.55rem;color:var(--text-dim)}
+.sc-data{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:8px;margin-bottom:var(--sp-md);padding:var(--sp-md);background:rgba(0,0,0,.2);border-radius:8px;border:1px solid rgba(255,255,255,.05)}
+.sd-item{text-align:center}.sd-key{font-family:'JetBrains Mono',monospace;font-size:.55rem;color:var(--text-dim);display:block;margin-bottom:4px;text-transform:uppercase}.sd-val{font-family:'JetBrains Mono',monospace;font-size:.95rem;color:var(--white);font-weight:600}
+.choices{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-bottom:var(--sp-md)}
+.choice-btn{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:var(--sp-md);text-align:left;cursor:pointer;transition:all .2s;color:var(--white)}
+.choice-btn:hover{border-color:rgba(212,160,23,.4);background:rgba(212,160,23,.06)}
+.choice-btn.correct{border-color:var(--c-green-line);background:var(--c-green-bg)}.choice-btn.wrong{border-color:var(--c-red-line);background:var(--c-red-bg)}
+.choice-name{font-family:'Cinzel',serif;font-size:.78rem;color:var(--gold);display:block;margin-bottom:4px}
+.choice-desc{font-size:.78rem;color:var(--text-sub)}
+.feedback{background:rgba(0,0,0,.28);border-radius:8px;padding:var(--sp-md);border-left:3px solid var(--gold);display:none}
+.feedback.show{display:block}.feedback p{font-size:.88rem;color:var(--text-sub);line-height:1.5;margin-bottom:8px}
+.gm-meta{display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--text-dim);margin-top:var(--sp-md)}
+</style>
+</head>
+<body>
+<script>Shell.init({ page:'decay', workflowStep:2 });</script>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div>
+      <div class="page-badge">⏱ Module 4 · Second Step</div>
+      <h1 class="page-title">Decay Optimizer</h1>
+      <p class="page-subtitle">Weekly theta timing and exit logic — find the optimal entry window and manage gamma risk in the NSE weekly cycle.</p>
+    </div>
+    <span class="signal-badge sb-blue" id="dteStatus"><span class="sb-dot"></span>Enter DTE to analyse</span>
+  </div>
+</div>
+
+<div class="section section-sm">
+  <!-- Top metric cards -->
+  <div class="grid-metrics mb-md" id="topMetrics" style="display:none">
+    <div class="metric-card"><span class="metric-label">DTE</span><span class="metric-value val-gold" id="m-dte">—</span><span class="metric-sub">Days to Expiry</span></div>
+    <div class="metric-card"><span class="metric-label">Theta Strength</span><span class="metric-value" id="m-theta">—</span><span class="metric-sub">Daily decay rate</span></div>
+    <div class="metric-card"><span class="metric-label">Gamma Risk</span><span class="metric-value" id="m-gamma">—</span><span class="metric-sub">Pin risk score</span></div>
+    <div class="metric-card"><span class="metric-label">Entry Signal</span><span class="metric-value" id="m-entry" style="font-size:.85rem">—</span><span class="metric-sub" id="m-entry-sub">—</span></div>
+    <div class="metric-card"><span class="metric-label">Target Exit</span><span class="metric-value" id="m-target">—</span><span class="metric-sub">50% of premium</span></div>
+    <div class="metric-card"><span class="metric-label">Stop Loss</span><span class="metric-value val-red" id="m-stop">—</span><span class="metric-sub">200% of premium</span></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⏱ Entry Timing Calculator</div>
+    <div class="input-grid">
+      <div class="field-group"><label class="field-label" for="dteInput">DTE (Days to Expiry)</label><input class="field-input" type="number" id="dteInput" value="4" min="0" max="7" step="1"></div>
+      <div class="field-group"><label class="field-label" for="premiumInput">Premium Collected (₹)</label><input class="field-input" type="number" id="premiumInput" value="180" min="10" step="5"></div>
+      <div class="field-group"><label class="field-label" for="ivRankInput">IV Rank (%)</label><input class="field-input" type="number" id="ivRankInput" value="55" min="0" max="100" step="1"></div>
+      <div class="field-group">
+        <label class="field-label" for="eventSelect">Upcoming Event</label>
+        <select class="field-input" id="eventSelect">
+          <option value="none">No major event</option>
+          <option value="rbi">RBI Policy Meeting</option>
+          <option value="earnings">Major Earnings</option>
+          <option value="budget">Union Budget</option>
+          <option value="election">Election Results</option>
+          <option value="fed">US Fed Meeting</option>
+          <option value="expiry">Monthly Expiry Week</option>
+          <option value="cpi">CPI / Inflation Data</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary" id="calcBtn" onclick="calcDTE()" style="width:100%">⏱ Analyse Timing Window</button>
+
+    <div id="signalOut">
+      <div class="signal-box sb-optimal" id="sig-optimal">
+        <h3 class="signal-title" style="color:var(--c-green)">✅ OPTIMAL ENTRY WINDOW</h3>
+        <p class="signal-desc">DTE 4–5 is the sweet spot for weekly options sellers. Theta decay accelerates while gamma risk remains manageable. Enter Iron Condor or credit spreads at defined risk.</p>
+      </div>
+      <div class="signal-box sb-aggressive" id="sig-aggressive">
+        <h3 class="signal-title" style="color:var(--c-amber)">⚠️ AGGRESSIVE ENTRY — REDUCE SIZE</h3>
+        <p class="signal-desc">DTE 3 offers elevated theta but gamma risk is rising. If entering, reduce position size by 30–50%. Widen strikes further than normal. Set tighter stop losses.</p>
+      </div>
+      <div class="signal-box sb-avoid" id="sig-avoid-gamma">
+        <h3 class="signal-title" style="color:var(--c-red)">🚫 AVOID — GAMMA RISK TOO HIGH</h3>
+        <p class="signal-desc">DTE 0–2 is dangerous for premium sellers. Gamma is explosive — a small price move causes outsized losses. Only close existing positions, do not open new ones.</p>
+      </div>
+      <div class="signal-box sb-observe" id="sig-observe">
+        <h3 class="signal-title" style="color:var(--c-blue)">👁 OBSERVE — TOO EARLY TO ENTER</h3>
+        <p class="signal-desc">DTE 6–7 is too early. Theta decay is minimal. Wait for DTE 4–5 before entering weekly positions. Use this time to monitor IV regime and identify your strikes.</p>
+      </div>
+      <div class="signal-box sb-avoid" id="sig-avoid-event">
+        <h3 class="signal-title" style="color:var(--c-red)">🚫 SKIP — MAJOR EVENT IN WINDOW</h3>
+        <p class="signal-desc">A binary event within this expiry window creates unpredictable gap risk. Wait for the event to pass. Post-event IV crush creates better entry conditions.</p>
+      </div>
+      <div class="risk-meter-wrap" id="riskMeter" style="display:none">
+        <div class="risk-lbl"><span>GAMMA RISK METER</span><span id="risk-pct">—</span></div>
+        <div class="risk-track"><div class="risk-bar" id="risk-fill" style="width:0%"></div></div>
+        <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:.55rem;color:var(--text-dim);margin-top:3px"><span>Low</span><span>Moderate</span><span>High</span><span>Extreme</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="interpCards" style="display:none;margin-top:var(--sp-md)">
+    <div class="grid-3">
+      <div class="card"><div class="card-title">📅 TV Remaining</div><p style="font-family:'JetBrains Mono',monospace;font-size:1.8rem;color:var(--gold)" id="ic-tv">₹—</p><p style="font-size:.85rem;color:var(--text-sub);margin-top:6px">Time value still in the position. This is what you can still lose as a buyer or gain as a seller.</p></div>
+      <div class="card"><div class="card-title">💰 Daily Theta</div><p style="font-family:'JetBrains Mono',monospace;font-size:1.8rem;color:var(--c-green)" id="ic-theta">₹—</p><p style="font-size:.85rem;color:var(--text-sub);margin-top:6px">Approximate premium that decays per day at current DTE. Accelerates toward expiry.</p></div>
+      <div class="card"><div class="card-title">📋 Recommended Strategy</div><p style="font-family:'Cinzel',serif;font-size:.95rem;color:var(--gold);line-height:1.5;margin-top:6px" id="ic-strat">—</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- Weekly DTE Visual -->
+<div class="section" style="padding-top:0">
+  <h2 class="section-title">📅 NSE Weekly Cycle Signal Map</h2>
+  <div class="card">
+    <p style="font-size:.85rem;color:var(--text-sub);margin-bottom:var(--sp-md)">Click any DTE cell to see the signal. The weekly NSE expiry cycle runs Thursday to Thursday.</p>
+    <div class="dte-grid">
+      <div class="dte-cell observe" onclick="quickDTE(7)"><span class="day">THU</span><span class="num">7</span><span class="sig">OBSERVE</span></div>
+      <div class="dte-cell observe" onclick="quickDTE(6)"><span class="day">FRI</span><span class="num">6</span><span class="sig">OBSERVE</span></div>
+      <div class="dte-cell observe" onclick="quickDTE(5)"><span class="day">MON</span><span class="num">5</span><span class="sig">WATCH</span></div>
+      <div class="dte-cell optimal" onclick="quickDTE(4)"><span class="day">TUE</span><span class="num">4</span><span class="sig">OPTIMAL</span></div>
+      <div class="dte-cell optimal" onclick="quickDTE(3)"><span class="day">WED</span><span class="num">3</span><span class="sig">OPTIMAL</span></div>
+      <div class="dte-cell aggressive" onclick="quickDTE(2)"><span class="day">THU-1</span><span class="num">2</span><span class="sig">REDUCE</span></div>
+      <div class="dte-cell avoid" onclick="quickDTE(1)"><span class="day">THU</span><span class="num">1</span><span class="sig">AVOID</span></div>
+    </div>
+    <div style="display:flex;gap:var(--sp-md);flex-wrap:wrap;font-family:'JetBrains Mono',monospace;font-size:.6rem">
+      <span style="color:var(--c-green)">■ OPTIMAL — Enter Iron Condor</span>
+      <span style="color:var(--c-amber)">■ REDUCE SIZE — Aggressive</span>
+      <span style="color:var(--c-blue)">■ OBSERVE — Wait</span>
+      <span style="color:var(--c-red)">■ AVOID — Gamma Danger</span>
+    </div>
+  </div>
+</div>
+
+<!-- Decay Table -->
+<div class="section" style="padding-top:0">
+  <h2 class="section-title">📉 Theta Decay Reference Table</h2>
+  <div class="card">
+    <p style="font-size:.85rem;color:var(--text-sub);margin-bottom:var(--sp-md)">Based on √time model. Values assume ₹200 ATM weekly premium at initiation.</p>
+    <div style="overflow-x:auto">
+      <table class="decay-table">
+        <thead><tr><th>DTE</th><th>Day</th><th>TV Remaining (₹)</th><th>Daily Decay (₹)</th><th>Gamma Risk</th><th>Signal</th><th>Decay Rate</th></tr></thead>
+        <tbody>
+          <tr><td>7</td><td>Previous Thu</td><td>200</td><td>14</td><td style="color:var(--c-green)">Very Low</td><td style="color:var(--c-blue)">Observe</td><td><span class="decay-bar" style="width:20%"></span></td></tr>
+          <tr><td>6</td><td>Friday</td><td>185</td><td>16</td><td style="color:var(--c-green)">Low</td><td style="color:var(--c-blue)">Observe</td><td><span class="decay-bar" style="width:25%"></span></td></tr>
+          <tr><td>5</td><td>Monday</td><td>169</td><td>20</td><td style="color:var(--c-green)">Low</td><td style="color:var(--c-blue)">Watch</td><td><span class="decay-bar" style="width:32%"></span></td></tr>
+          <tr><td>4</td><td>Tuesday</td><td>149</td><td>25</td><td style="color:var(--c-amber)">Moderate</td><td style="color:var(--c-green)">✅ Optimal Entry</td><td><span class="decay-bar" style="width:45%"></span></td></tr>
+          <tr><td>3</td><td>Wednesday</td><td>124</td><td>34</td><td style="color:var(--c-amber)">Elevated</td><td style="color:var(--c-green)">✅ Optimal Entry</td><td><span class="decay-bar" style="width:62%"></span></td></tr>
+          <tr><td>2</td><td>Thursday -1</td><td>90</td><td>40</td><td style="color:var(--c-red)">High</td><td style="color:var(--c-amber)">⚠️ Reduce Size</td><td><span class="decay-bar" style="width:78%"></span></td></tr>
+          <tr><td>1</td><td>Expiry Thursday</td><td>50</td><td>50</td><td style="color:var(--c-red)">Extreme</td><td style="color:var(--c-red)">🚫 Avoid</td><td><span class="decay-bar" style="width:95%"></span></td></tr>
+          <tr><td>0</td><td>Same day expiry</td><td>0</td><td>—</td><td style="color:var(--c-red)">Max</td><td style="color:var(--c-red)">🚫 Close Only</td><td><span class="decay-bar" style="width:100%"></span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Event Calendar -->
+<div class="section" style="padding-top:0">
+  <h2 class="section-title">📆 Event Risk Calendar</h2>
+  <div class="event-grid">
+    <div class="event-card ev-high"><p class="ev-name">🏦 RBI Policy</p><span class="ev-impact" style="color:var(--c-red)">HIGH IMPACT · Skip week</span><p class="ev-desc">Repo rate decisions cause 2–4% Nifty moves. IV spikes then crushes post-announcement. Enter Iron Condors the week after.</p></div>
+    <div class="event-card ev-high"><p class="ev-name">📊 Union Budget</p><span class="ev-impact" style="color:var(--c-red)">EXTREME IMPACT · Skip</span><p class="ev-desc">Annual budget causes sector rotation and 3–6% index moves. IV peaks 2 weeks before. Post-budget IV crush is ideal for selling.</p></div>
+    <div class="event-card ev-high"><p class="ev-name">🗳 Election Results</p><span class="ev-impact" style="color:var(--c-red)">EXTREME IMPACT · Avoid</span><p class="ev-desc">General election results in May 2024 caused +4.3% gap up. Binary events are unhedgeable — wait for post-event normalisation.</p></div>
+    <div class="event-card ev-med"><p class="ev-name">🇺🇸 US Fed Meeting</p><span class="ev-impact" style="color:var(--c-amber)">MEDIUM IMPACT · Reduce size</span><p class="ev-desc">FOMC decisions affect global risk sentiment and USD/INR. Nifty often gaps 1–2%. Reduce size by 50% on FOMC weeks.</p></div>
+    <div class="event-card ev-med"><p class="ev-name">💹 Monthly Expiry</p><span class="ev-impact" style="color:var(--c-amber)">MEDIUM IMPACT · Careful</span><p class="ev-desc">Monthly expiry week brings large OI unwinding and institutional positioning. Strike pinning risk increases. Widen strikes.</p></div>
+    <div class="event-card ev-med"><p class="ev-name">📈 GDP / CPI Data</p><span class="ev-impact" style="color:var(--c-amber)">MEDIUM IMPACT · Monitor</span><p class="ev-desc">Macro data releases cause 0.5–1.5% Nifty moves. Note release dates. If within expiry window, reduce size appropriately.</p></div>
+    <div class="event-card ev-low"><p class="ev-name">🏢 Large Cap Earnings</p><span class="ev-impact" style="color:var(--c-blue)">LOW·MEDIUM · Stock-specific</span><p class="ev-desc">Nifty 50 components reporting in the week can cause sector-level moves. Check earnings calendar before entering.</p></div>
+    <div class="event-card ev-low"><p class="ev-name">🌐 Global Risk Events</p><span class="ev-impact" style="color:var(--c-blue)">VARIABLE IMPACT · Monitor</span><p class="ev-desc">Geopolitical events, crude oil spikes, and currency crises create tail risk. Keep position size conservative in uncertain environments.</p></div>
+  </div>
+</div>
+
+<!-- Trade Lifecycle -->
+<div class="section" style="padding-top:0">
+  <h2 class="section-title">🔄 Bank Nifty Iron Condor — Trade Lifecycle</h2>
+  <div class="card">
+    <p style="font-size:.85rem;color:var(--text-sub);margin-bottom:var(--sp-lg)">A realistic Bank Nifty Iron Condor from entry at DTE 4 to exit at 50% profit. All figures illustrative.</p>
+    <div class="lifecycle-steps">
+      <div class="lc-step"><span class="lc-step-num">1</span><div class="lc-step-title">Tuesday — Entry (DTE 4)</div><div class="lc-step-detail">Bank Nifty at 48,500. Sell 49,200 CE + 47,800 PE. Buy 49,600 CE + 47,400 PE. Credit received: ₹180. Max loss: ₹220. Breakevens: 47,620 / 49,380.</div></div>
+      <div class="lc-step"><span class="lc-step-num">2</span><div class="lc-step-title">Tuesday EOD (DTE 4)</div><div class="lc-step-detail">BN closed at 48,420. Position P&amp;L: +₹32. Theta earned: ₹25. Gamma quiet. No adjustment needed. Hold overnight.</div></div>
+      <div class="lc-step"><span class="lc-step-num">3</span><div class="lc-step-title">Wednesday Morning (DTE 3)</div><div class="lc-step-detail">BN gaps up to 48,800 on global cues. Position tests upper wing. Delta is now -22. Consider rolling up the put spread. Current P&amp;L: +₹18.</div></div>
+      <div class="lc-step"><span class="lc-step-num">4</span><div class="lc-step-title">Wednesday EOD (DTE 3)</div><div class="lc-step-detail">BN back to 48,550. Theta earned total: ₹58. P&amp;L now +₹64. Position at 36% of max profit. Continue holding — target is 50% (₹90).</div></div>
+      <div class="lc-step"><span class="lc-step-num">5</span><div class="lc-step-title">Thursday 11:30 AM (DTE 2)</div><div class="lc-step-detail">BN at 48,480. Total P&amp;L reaches ₹91 (50.5% of credit). 🎯 EXIT TRIGGERED. Close all 4 legs at market. Book profit. Do not hold further — gamma risk escalates sharply.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Theta Hunter Game -->
+<div class="section" style="padding-top:0">
+  <h2 class="section-title">🎯 Theta Hunter Simulation</h2>
+  <div class="game-card">
+    <div class="game-header">
+      <div><div class="game-title" id="g-title">Loading scenario...</div><div style="font-size:.88rem;color:var(--text-sub)">Analyse timing and choose the correct action.</div></div>
+      <div class="score-box"><span class="score-val" id="g-score">0</span><span class="score-lbl">SCORE</span></div>
+    </div>
+    <div class="sc-data" id="g-data"></div>
+    <p style="font-family:'Cinzel',serif;font-size:.72rem;color:rgba(212,160,23,.7);letter-spacing:.06em;margin-bottom:8px">WHAT IS THE CORRECT ACTION?</p>
+    <div class="choices" id="g-choices"></div>
+    <div class="feedback" id="g-feedback"><p id="g-fb"></p><button class="btn btn-outline btn-sm" onclick="nextG()">Next Scenario →</button></div>
+    <div class="gm-meta"><span>Scenario <span id="g-num">1</span>/5</span><span>Streak: <span id="g-streak">0</span> 🔥</span></div>
+  </div>
+</div>
+
+<!-- Rules Accordions -->
+<div class="section" style="padding-top:0">
+  <h2 class="section-title">📋 Entry &amp; Exit Rules</h2>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <div class="accordion"><button class="acc-trigger" aria-expanded="true"><span class="acc-trigger-title">✅ Entry Conditions Checklist</span><span class="acc-icon">▾</span></button><div class="acc-body open"><ul class="rule-list"><li>IV Rank above 40% — confirmed from Volatility Engine</li><li>DTE between 3 and 5 — in the optimal decay window</li><li>No major binary event (RBI, election, budget) within the expiry window</li><li>Sufficient bid-ask spread liquidity at your chosen strikes</li><li>Strike selection: OTM by at least 1 standard deviation (±1σ = Spot × IV × √DTE/252)</li><li>Define max loss before entry — Iron Condor wing width determines risk</li></ul></div></div>
+    <div class="accordion"><button class="acc-trigger" aria-expanded="false"><span class="acc-trigger-title">💰 Profit Target Rules</span><span class="acc-icon">▾</span></button><div class="acc-body"><ul class="rule-list"><li>Close at 50% of maximum premium received — this is the primary exit rule</li><li>Do not hold to full expiry — gamma risk accelerates in the final 24 hours</li><li>If 50% target reached before DTE 2, close and do not re-enter the same expiry</li><li>Bank the profit — do not roll or leg into new positions in the same week</li></ul></div></div>
+    <div class="accordion"><button class="acc-trigger" aria-expanded="false"><span class="acc-trigger-title">🚨 Stop Loss &amp; Adjustment Rules</span><span class="acc-icon">▾</span></button><div class="acc-body"><ul class="rule-list"><li>Hard stop: exit at 200% of credit received (total position loss = 2× premium collected)</li><li>Delta breach: if net delta exceeds ±30, consider rolling the tested wing further OTM</li><li>If spot breaches short strike: close the threatened spread immediately, assess the remaining spread</li><li>Never average down on a losing Iron Condor — the risk/reward deteriorates sharply</li></ul></div></div>
+    <div class="accordion"><button class="acc-trigger" aria-expanded="false"><span class="acc-trigger-title">📐 Expected Move Calculator</span><span class="acc-icon">▾</span></button><div class="acc-body">
+      <p style="color:var(--text-sub);font-size:.9rem;margin-bottom:var(--sp-md)">Use this to determine how far OTM to place your short strikes.</p>
+      <div style="background:rgba(0,0,0,.3);border:1px solid rgba(212,160,23,.15);border-radius:6px;padding:12px 16px;font-family:'JetBrains Mono',monospace;font-size:.75rem;color:rgba(212,160,23,.85);line-height:1.8">
+        ±1σ Expected Move = Spot × IV × √(DTE / 252)<br>
+        Example: Nifty 22,000 · IV 18% · DTE 4<br>
+        = 22,000 × 0.18 × √(4/252) = ±499 points<br>
+        → Place short strikes beyond 21,501 / 22,499
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<div class="cta-strip">
+  <div class="cta-strip-inner">
+    <div class="cta-strip-text"><h3>Timing Confirmed — Build Your Strategy</h3><p>Now that you know when to enter, the Strategy Lab will help you select and visualise the right structure.</p></div>
+    <div class="cta-strip-actions"><a href="strategy-lab.html" class="btn btn-primary">📐 Open Strategy Lab →</a><a href="volatility-engine.html" class="btn btn-ghost btn-sm">← Volatility Engine</a></div>
+  </div>
+</div>
+
+<script>
+const SIGNALS={
+  7:{sig:'observe',label:'OBSERVE — Too Early',color:'val-blue',gammaPct:8,daily:14,tv:200,strat:'Wait for DTE 4–5 before entering. Monitor IV regime and identify strike levels.'},
+  6:{sig:'observe',label:'OBSERVE — Too Early',color:'val-blue',gammaPct:12,daily:16,tv:185,strat:'Still early. Observe how the week develops. Enter at DTE 4–5.'},
+  5:{sig:'observe',label:'WATCH — Nearly There',color:'val-blue',gammaPct:18,daily:20,tv:169,strat:'One more day. Enter tomorrow at DTE 4 for optimal risk/reward.'},
+  4:{sig:'optimal',label:'✅ OPTIMAL ENTRY',color:'val-green',gammaPct:28,daily:25,tv:149,strat:'Iron Condor (defined risk) — ideal entry. Sell OTM call + put spreads at ±1σ from spot.'},
+  3:{sig:'optimal',label:'✅ OPTIMAL ENTRY',color:'val-green',gammaPct:45,daily:34,tv:124,strat:'Iron Condor at standard size. Gamma beginning to rise — use defined risk structure.'},
+  2:{sig:'aggressive',label:'⚠️ AGGRESSIVE — Reduce',color:'val-amber',gammaPct:68,daily:40,tv:90,strat:'Iron Condor at 50% normal size. Widen wings. Gamma risk elevated — exit plan ready.'},
+  1:{sig:'avoid',label:'🚫 AVOID — Gamma Danger',color:'val-red',gammaPct:88,daily:50,tv:50,strat:'Close existing positions only. Do not open new trades. Gamma is explosive.'},
+  0:{sig:'avoid',label:'🚫 AVOID — Expiry Day',color:'val-red',gammaPct:100,daily:50,tv:0,strat:'Expiry day — close any remaining positions immediately. No new trades.'},
+};
+const EVENT_OVERRIDE={rbi:true,earnings:true,budget:true,election:true};
+
+function calcDTE(){
+  const btn=document.getElementById('calcBtn');Shell.setLoading(btn,true);
+  setTimeout(()=>{_calc();Shell.setLoading(btn,false);},300);
+}
+function _calc(){
+  const dte=parseInt(document.getElementById('dteInput').value)||4;
+  const prem=parseFloat(document.getElementById('premiumInput').value)||180;
+  const ivr=parseFloat(document.getElementById('ivRankInput').value)||50;
+  const ev=document.getElementById('eventSelect').value;
+  const d=SIGNALS[Math.min(Math.max(dte,0),7)];
+  const isEvent=EVENT_OVERRIDE[ev];
+  // Update top cards
+  document.getElementById('topMetrics').style.display='grid';
+  document.getElementById('m-dte').textContent=dte+'d';
+  document.getElementById('m-theta').textContent='₹'+d.daily;
+  document.getElementById('m-gamma').textContent=d.gammaPct+'%';
+  const entEl=document.getElementById('m-entry');
+  entEl.textContent=isEvent?'🚫 SKIP EVENT':d.label.split('—')[0].trim();
+  entEl.className='metric-value '+(isEvent?'val-red':d.color);
+  document.getElementById('m-entry-sub').textContent=isEvent?'Event risk':d.label;
+  document.getElementById('m-target').textContent='₹'+Math.round(prem*0.5);
+  document.getElementById('m-stop').textContent='₹'+Math.round(prem*2);
+  // Hide all signal boxes
+  ['sig-optimal','sig-aggressive','sig-avoid-gamma','sig-observe','sig-avoid-event'].forEach(id=>document.getElementById(id).classList.remove('show'));
+  if(isEvent)document.getElementById('sig-avoid-event').classList.add('show');
+  else if(d.sig==='optimal')document.getElementById('sig-optimal').classList.add('show');
+  else if(d.sig==='aggressive')document.getElementById('sig-aggressive').classList.add('show');
+  else if(d.sig==='avoid')document.getElementById('sig-avoid-gamma').classList.add('show');
+  else document.getElementById('sig-observe').classList.add('show');
+  // Risk meter
+  document.getElementById('riskMeter').style.display='block';
+  const pct=isEvent?95:d.gammaPct;
+  document.getElementById('risk-pct').textContent=pct+'%';
+  const fill=document.getElementById('risk-fill');
+  fill.style.width=pct+'%';
+  fill.style.background=pct<30?'var(--c-green)':pct<55?'var(--c-amber)':pct<80?'linear-gradient(90deg,var(--c-amber),var(--c-red))':'var(--c-red)';
+  // Interp cards
+  document.getElementById('interpCards').style.display='block';
+  document.getElementById('ic-tv').textContent='₹'+Math.round(prem*(d.tv/200));
+  document.getElementById('ic-theta').textContent='₹'+Math.round(prem*(d.daily/200));
+  document.getElementById('ic-strat').textContent=isEvent?'Skip this week — wait for post-event entry next cycle.':d.strat;
+  // Highlight DTE grid
+  document.querySelectorAll('.dte-cell').forEach((c,i)=>{c.classList.toggle('active',7-i===dte);});
+  // Status badge
+  const sb=document.getElementById('dteStatus');
+  sb.className='signal-badge '+(isEvent||d.sig==='avoid'?'sb-red':d.sig==='optimal'?'sb-green':d.sig==='aggressive'?'sb-amber':'sb-blue');
+  sb.innerHTML='<span class="sb-dot"></span>'+(isEvent?'Event Risk — Skip':d.label.replace('✅','').replace('⚠️','').replace('🚫','').trim());
+  Shell.XP.add(15);Shell.scrollTo('topMetrics');
+}
+function quickDTE(d){document.getElementById('dteInput').value=d;calcDTE();}
+
+// THETA HUNTER GAME
+const GS=[
+  {title:'Tuesday Morning — Optimal Window',data:{DTE:'4',Premium:'₹180','IV Rank':'62%',Event:'None','BN Spot':'48,500','Gamma Risk':'Low'},choices:[{n:'Enter Iron Condor',d:'Sell OTM call + put spreads',correct:true},{n:'Wait until tomorrow',d:'DTE 3 is better timing',correct:false},{n:'Buy straddle instead',d:'Premium buying strategy',correct:false},{n:'Skip — too risky',d:'Avoid all weekly options',correct:false}],exp:'DTE 4 with IV Rank 62% and no events is textbook optimal entry. Iron Condor captures elevated premium with defined risk and 3–4 days of accelerating theta decay.'},
+  {title:'Thursday Expiry Day — Existing Position',data:{DTE:'1',Premium:'₹90 remaining','P&L':'+₹94 (52%)',Event:'None','Position':'IC open','Gamma':'Extreme'},choices:[{n:'Hold until expiry',d:'Squeeze last bit of premium',correct:false},{n:'Exit immediately',d:'Close all legs now',correct:true},{n:'Roll to next week',d:'Extend the trade',correct:false},{n:'Close only losing leg',d:'Partial exit',correct:false}],exp:'DTE 1 means gamma is explosive. You have already hit 52% of max profit — exceeding the 50% target. Close everything. Holding to expiry risks a gap that wipes the entire profit in minutes.'},
+  {title:'RBI Meeting This Week',data:{DTE:'4',Premium:'₹165','IV Rank':'71%',Event:'RBI Policy','BN Spot':'49,200','Regime':'HIGH IV'},choices:[{n:'Enter large Iron Condor',d:'IV Rank 71% is great for selling',correct:false},{n:'Skip this week entirely',d:'Wait for post-RBI entry',correct:true},{n:'Enter at half size',d:'Reduce but still trade',correct:false},{n:'Buy straddle for the event',d:'Play the binary outcome',correct:false}],exp:'Even at IV Rank 71%, a binary RBI event overrides everything. Post-RBI, IV crushes and you get a better entry. Skip this week, enter next week after the event.'},
+  {title:'Wednesday — Stop Loss Triggered',data:{DTE:'3',Premium:'₹200 received','P&L':'-₹412 (206%)',Event:'None','BN Move':'+2.8% gap','Short Strike':'Breached'},choices:[{n:'Average down — sell more',d:'Collect more premium to offset',correct:false},{n:'Exit entire position',d:'Close all 4 legs at market',correct:true},{n:'Close only the tested spread',d:'Keep the other spread open',correct:false},{n:'Wait for recovery',d:'Gap will close by EOD',correct:false}],exp:'Stop loss at 200% has triggered. Exit immediately — no exceptions. Averaging down on a breached Iron Condor compounds risk exponentially. One more adverse move can result in max loss on both spreads.'},
+  {title:'Friday — Too Early?',data:{DTE:'6',Premium:'₹140','IV Rank':'58%',Event:'None','BN Spot':'48,100','Theta':'₹16/day'},choices:[{n:'Enter now — good IV',d:'IV Rank 58% is favorable',correct:false},{n:'Wait until Tuesday (DTE 4)',d:'Enter at optimal window',correct:true},{n:'Enter at DTE 5 on Monday',d:'One day earlier than optimal',correct:false},{n:'Skip the week entirely',d:'No trade this week',correct:false}],exp:'IV Rank 58% is excellent but DTE 6 means theta is only ₹16/day — you are paying for 2 extra days of overnight gap risk without proportional theta compensation. Wait for DTE 4 on Tuesday for the best risk/reward.'}
+];
+let gCur=0,gScore=0,gStreak=0,gAns=false;
+function loadG(i){const s=GS[i];if(!s){document.getElementById('g-title').textContent='🏆 Complete! Score: '+gScore;document.getElementById('g-data').innerHTML=`<div style="grid-column:1/-1;text-align:center;font-family:'Cinzel',serif;color:var(--gold)">Final Score: ${gScore} · Best Streak: ${gStreak} 🔥</div>`;document.getElementById('g-choices').innerHTML=`<button onclick="restartG()" class="btn btn-outline" style="grid-column:1/-1">🔄 Play Again</button>`;return;}
+gAns=false;document.getElementById('g-title').textContent=s.title;document.getElementById('g-num').textContent=i+1;document.getElementById('g-feedback').classList.remove('show');
+document.getElementById('g-data').innerHTML=Object.entries(s.data).map(([k,v])=>`<div class="sd-item"><span class="sd-key">${k}</span><span class="sd-val">${v}</span></div>`).join('');
+document.getElementById('g-choices').innerHTML=s.choices.map((c,j)=>`<button class="choice-btn" onclick="ansG(${j})"><span class="choice-name">${c.n}</span><span class="choice-desc">${c.d}</span></button>`).join('');}
+function ansG(idx){if(gAns)return;gAns=true;const s=GS[gCur];const c=s.choices[idx];document.querySelectorAll('.choice-btn').forEach((b,i)=>{if(s.choices[i].correct)b.classList.add('correct');else if(i===idx&&!c.correct)b.classList.add('wrong');b.style.pointerEvents='none';});const pts=c.correct?100+(gStreak*10):0;if(c.correct){gScore+=pts;gStreak++;Shell.XP.add(20);}else{gStreak=0;}document.getElementById('g-score').textContent=gScore;document.getElementById('g-streak').textContent=gStreak;const fb=document.getElementById('g-feedback');document.getElementById('g-fb').textContent=(c.correct?'✅ Correct! +'+pts+' pts — ':'❌ Incorrect — ')+s.exp;fb.style.borderLeftColor=c.correct?'var(--c-green)':'var(--c-red)';fb.classList.add('show');}
+function nextG(){gCur++;loadG(gCur);}function restartG(){gCur=0;gScore=0;gStreak=0;document.getElementById('g-score').textContent=0;document.getElementById('g-streak').textContent=0;loadG(0);}
+loadG(0);
+</script>
+</body>
+</html>

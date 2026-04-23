@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portfolio Dashboard | Greek Gods Arena</title>
+<script src="shell.js"></script>
+<style>
+.pos-table{width:100%;border-collapse:collapse}
+.pos-table th{background:rgba(0,0,0,.3);font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--text-dim);padding:8px 10px;text-align:left;letter-spacing:.05em;text-transform:uppercase}
+.pos-table td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.04);font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--text-sub);vertical-align:middle}
+.pos-table tr:hover td{background:rgba(255,255,255,.02)}
+.pos-input{background:rgba(0,0,0,.3);border:1px solid rgba(212,160,23,.15);border-radius:5px;color:var(--white);font-family:'JetBrains Mono',monospace;font-size:.8rem;padding:5px 8px;width:80px;outline:none}
+.pos-input:focus{border-color:var(--gold)}
+.risk-card{border:2px solid;border-radius:10px;padding:var(--sp-md)}
+.risk-ok{border-color:var(--c-green-line);background:var(--c-green-bg)}.risk-warn{border-color:var(--c-amber-line);background:var(--c-amber-bg)}.risk-breach{border-color:var(--c-red-line);background:var(--c-red-bg)}
+.risk-name{font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--text-dim);text-transform:uppercase;display:block;margin-bottom:4px}
+.risk-val{font-family:'JetBrains Mono',monospace;font-size:1.4rem;font-weight:600}
+.risk-limit{font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--text-dim);display:block;margin-top:3px}
+</style>
+</head>
+<body>
+<script>Shell.init({ page:'portfolio', workflowStep:4 });</script>
+<div class="page-header">
+  <div class="page-header-inner">
+    <div>
+      <div class="page-badge">📊 Module 1 · Fourth Step</div>
+      <h1 class="page-title">Portfolio Dashboard</h1>
+      <p class="page-subtitle">Greeks aggregation, risk limit monitoring, and exposure analysis across all your options positions.</p>
+    </div>
+    <span class="signal-badge sb-blue" id="portStatus"><span class="sb-dot"></span>No positions yet</span>
+  </div>
+</div>
+
+<div class="section section-sm">
+  <!-- Aggregate Greeks -->
+  <div class="grid-metrics mb-md" id="aggMetrics">
+    <div class="metric-card"><span class="metric-label">Net Delta</span><span class="metric-value" id="ag-delta">0.00</span><span class="metric-sub">Directional exposure</span></div>
+    <div class="metric-card"><span class="metric-label">Net Gamma</span><span class="metric-value" id="ag-gamma">0.0000</span><span class="metric-sub">Delta sensitivity</span></div>
+    <div class="metric-card"><span class="metric-label">Net Theta/day</span><span class="metric-value val-green" id="ag-theta">₹0</span><span class="metric-sub">Daily time decay</span></div>
+    <div class="metric-card"><span class="metric-label">Net Vega</span><span class="metric-value" id="ag-vega">₹0</span><span class="metric-sub">Per 1% IV change</span></div>
+    <div class="metric-card"><span class="metric-label">Total P&amp;L</span><span class="metric-value" id="ag-pnl">₹0</span><span class="metric-sub">Unrealised</span></div>
+    <div class="metric-card"><span class="metric-label">Positions</span><span class="metric-value val-gold" id="ag-count">0</span><span class="metric-sub">Open</span></div>
+  </div>
+
+  <!-- Risk limits -->
+  <div class="grid-3 mb-md" id="riskCards">
+    <div class="risk-card risk-ok" id="rc-delta"><span class="risk-name">Delta Limit</span><span class="risk-val" id="rl-delta" style="color:var(--c-green)">0.00</span><span class="risk-limit">Limit: ±50 | Status: OK</span></div>
+    <div class="risk-card risk-ok" id="rc-vega"><span class="risk-name">Vega Limit</span><span class="risk-val" id="rl-vega" style="color:var(--c-green)">₹0</span><span class="risk-limit">Limit: ±₹5,000 | Status: OK</span></div>
+    <div class="risk-card risk-ok" id="rc-theta"><span class="risk-name">Theta Target</span><span class="risk-val" id="rl-theta" style="color:var(--c-green)">₹0</span><span class="risk-limit">Target: ₹500+/day | Status: —</span></div>
+  </div>
+
+  <!-- Positions table -->
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-md);flex-wrap:wrap;gap:var(--sp-sm)">
+      <span class="card-title" style="margin-bottom:0">Positions</span>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="addRow()">+ Add Position</button>
+        <button class="btn btn-outline btn-sm" onclick="calcPortfolio()">🔄 Recalculate</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearAll()">Clear All</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="pos-table">
+        <thead><tr><th>Symbol</th><th>Type</th><th>Strike</th><th>DTE</th><th>IV%</th><th>Qty(lots)</th><th>Delta</th><th>Gamma</th><th>Theta/day</th><th>Vega</th><th>P&amp;L ₹</th><th></th></tr></thead>
+        <tbody id="posBody"></tbody>
+      </table>
+    </div>
+    <div id="emptyState" style="text-align:center;padding:var(--sp-2xl);display:none">
+      <div style="font-size:2.5rem;opacity:.4;margin-bottom:var(--sp-md)">📋</div>
+      <p style="font-family:'Cinzel',serif;color:var(--gold);margin-bottom:8px">No Positions Added</p>
+      <p style="color:var(--text-sub);font-size:.9rem;margin-bottom:var(--sp-md)">Add your options positions to see aggregated Greeks and risk limits.</p>
+      <button class="btn btn-outline" onclick="loadSample()">Load Sample Portfolio</button>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="padding-top:0">
+  <h2 class="section-title">📐 Risk Limit Guidelines</h2>
+  <div class="grid-2">
+    <div class="accordion"><button class="acc-trigger" aria-expanded="true"><span class="acc-trigger-title">📏 Recommended Position Limits</span><span class="acc-icon">▾</span></button><div class="acc-body open"><ul class="rule-list"><li>Max 2–5% of account value per individual position</li><li>Max 10 concurrent positions across all underlyings</li><li>Max net portfolio delta: ±50 delta (for a ₹10L account)</li><li>Max net vega: ±₹5,000 per 1% IV change</li><li>Min theta target: ₹500/day (if primarily a seller)</li><li>Stop loss per position: 2× credit received for sellers</li></ul></div></div>
+    <div class="accordion"><button class="acc-trigger" aria-expanded="false"><span class="acc-trigger-title">⚠️ Risk Breach Actions</span><span class="acc-icon">▾</span></button><div class="acc-body"><ul class="rule-list"><li>Delta breach (+50): Buy/sell futures or adjust call/put ratio</li><li>Vega breach: Close highest-vega position or buy protective hedge</li><li>Gamma too high: Close near-expiry ATM positions immediately</li><li>Single position loss > 3% account: Exit and review</li><li>Portfolio down > 7% in a week: Stop all new trades</li></ul></div></div>
+  </div>
+</div>
+
+<div class="cta-strip">
+  <div class="cta-strip-inner">
+    <div class="cta-strip-text"><h3>Portfolio Tracked — Test Your Skills</h3><p>Head to the Arena to test your options knowledge in gamified simulation challenges.</p></div>
+    <div class="cta-strip-actions"><a href="arena.html" class="btn btn-primary">🏟 Open Arena →</a><a href="strategy-lab.html" class="btn btn-ghost btn-sm">← Strategy Lab</a></div>
+  </div>
+</div>
+
+<script>
+function erf(x){const t=1/(1+0.3275911*Math.abs(x));const poly=t*(0.254829592+t*(-0.284496736+t*(1.421413741+t*(-1.453152027+t*1.061405429))));const r=1-poly*Math.exp(-x*x);return x>=0?r:-r;}
+function normCDF(x){return 0.5*(1+erf(x/Math.sqrt(2)));}
+function normPDF(x){return Math.exp(-0.5*x*x)/Math.sqrt(2*Math.PI);}
+function bsm(S,K,T,r,sigma,q,type){if(T<=0){const iv=type==='call'?Math.max(S-K,0):Math.max(K-S,0);return{price:iv,delta:type==='call'?(S>K?1:0):(S<K?-1:0),gamma:0,theta:0,vega:0};}const d1=(Math.log(S/K)+(r-q+0.5*sigma*sigma)*T)/(sigma*Math.sqrt(T));const d2=d1-sigma*Math.sqrt(T);const price=type==='call'?S*Math.exp(-q*T)*normCDF(d1)-K*Math.exp(-r*T)*normCDF(d2):K*Math.exp(-r*T)*normCDF(-d2)-S*Math.exp(-q*T)*normCDF(-d1);const delta=type==='call'?Math.exp(-q*T)*normCDF(d1):Math.exp(-q*T)*(normCDF(d1)-1);const gamma=Math.exp(-q*T)*normPDF(d1)/(S*sigma*Math.sqrt(T));const theta=(-S*Math.exp(-q*T)*normPDF(d1)*sigma/(2*Math.sqrt(T))-r*K*Math.exp(-r*T)*(type==='call'?normCDF(d2):normCDF(-d2))+q*S*Math.exp(-q*T)*(type==='call'?normCDF(d1):normCDF(-d1)))/365;const vega=S*Math.exp(-q*T)*normPDF(d1)*Math.sqrt(T)*0.01;return{price,delta,gamma,theta,vega};}
+let positions=[];let rowId=0;
+function addRow(data={}){
+  const id='r'+rowId++;
+  const tr=document.createElement('tr');tr.id=id;
+  tr.innerHTML=`<td><input class="pos-input" value="${data.sym||'NIFTY'}" style="width:70px" onchange="calcPortfolio()"></td>
+  <td><select class="pos-input" style="width:60px" onchange="calcPortfolio()"><option${data.type==='put'?' selected':''}>call</option><option${data.type==='put'?' selected':''}>put</option></select></td>
+  <td><input class="pos-input" type="number" value="${data.strike||22000}" step="50" onchange="calcPortfolio()"></td>
+  <td><input class="pos-input" type="number" value="${data.dte||4}" min="1" max="365" onchange="calcPortfolio()"></td>
+  <td><input class="pos-input" type="number" value="${data.iv||18}" step="0.1" onchange="calcPortfolio()"></td>
+  <td><input class="pos-input" type="number" value="${data.qty||1}" step="1" onchange="calcPortfolio()"></td>
+  <td id="${id}-delta" style="color:var(--c-green)">—</td>
+  <td id="${id}-gamma">—</td>
+  <td id="${id}-theta" style="color:var(--c-amber)">—</td>
+  <td id="${id}-vega">—</td>
+  <td id="${id}-pnl">—</td>
+  <td><button onclick="removeRow('${id}')" style="background:none;border:none;color:var(--c-red);cursor:pointer;font-size:.8rem">✕</button></td>`;
+  document.getElementById('posBody').appendChild(tr);
+  document.getElementById('emptyState').style.display='none';
+  calcPortfolio();
+}
+function removeRow(id){const el=document.getElementById(id);if(el)el.remove();checkEmpty();calcPortfolio();}
+function clearAll(){document.getElementById('posBody').innerHTML='';checkEmpty();calcPortfolio();}
+function checkEmpty(){const rows=document.getElementById('posBody').children;document.getElementById('emptyState').style.display=rows.length===0?'block':'none';}
+function loadSample(){
+  clearAll();
+  [{sym:'NIFTY',type:'call',strike:22500,dte:4,iv:18,qty:-1},{sym:'NIFTY',type:'put',strike:21500,dte:4,iv:18,qty:-1},{sym:'NIFTY',type:'call',strike:22800,dte:4,iv:17,qty:1},{sym:'NIFTY',type:'put',strike:21200,dte:4,iv:17,qty:1}].forEach(addRow);
+}
+const S=22000,r=0.065,q=0.015,LOT=50;
+function calcPortfolio(){
+  const rows=document.getElementById('posBody').querySelectorAll('tr');
+  let netDelta=0,netGamma=0,netTheta=0,netVega=0,netPnl=0;
+  rows.forEach(row=>{
+    const inputs=row.querySelectorAll('input,select');
+    const sym=inputs[0].value;const type=inputs[1].value;const K=parseFloat(inputs[2].value)||22000;const dte=parseFloat(inputs[3].value)||4;const iv=parseFloat(inputs[4].value)/100||0.18;const qty=parseFloat(inputs[5].value)||1;
+    const T=dte/252;const res=bsm(S,K,T,r,iv,q,type);const sign=qty>0?1:-1;const absQty=Math.abs(qty);
+    const id=row.id;
+    const d=res.delta*(qty>0?1:-1)*absQty;const g=res.gamma*(qty>0?1:-1)*absQty;const th=res.theta*(qty>0?1:-1)*absQty*LOT;const ve=res.vega*(qty>0?1:-1)*absQty*LOT;
+    netDelta+=d;netGamma+=g;netTheta+=th;netVega+=ve;
+    document.getElementById(id+'-delta').textContent=(d).toFixed(2);document.getElementById(id+'-delta').style.color=d>0?'var(--c-green)':d<0?'var(--c-red)':'var(--text-sub)';
+    document.getElementById(id+'-gamma').textContent=g.toFixed(4);
+    document.getElementById(id+'-theta').textContent='₹'+th.toFixed(0);document.getElementById(id+'-theta').style.color=th>0?'var(--c-green)':'var(--c-amber)';
+    document.getElementById(id+'-vega').textContent='₹'+ve.toFixed(0);
+    document.getElementById(id+'-pnl').textContent='—';
+  });
+  document.getElementById('ag-delta').textContent=netDelta.toFixed(2);document.getElementById('ag-delta').className='metric-value '+(Math.abs(netDelta)>30?'val-red':Math.abs(netDelta)>15?'val-amber':'');
+  document.getElementById('ag-gamma').textContent=netGamma.toFixed(4);
+  document.getElementById('ag-theta').textContent='₹'+Math.round(netTheta);document.getElementById('ag-theta').className='metric-value '+(netTheta>0?'val-green':'val-red');
+  document.getElementById('ag-vega').textContent='₹'+Math.round(netVega);
+  document.getElementById('ag-count').textContent=rows.length;
+  // Risk cards
+  const da=Math.abs(netDelta);const va=Math.abs(netVega);
+  const rc_d=document.getElementById('rc-delta');rc_d.className='risk-card '+(da>50?'risk-breach':da>30?'risk-warn':'risk-ok');document.getElementById('rl-delta').textContent=netDelta.toFixed(2);document.getElementById('rl-delta').style.color=da>50?'var(--c-red)':da>30?'var(--c-amber)':'var(--c-green)';
+  const rc_v=document.getElementById('rc-vega');rc_v.className='risk-card '+(va>5000?'risk-breach':va>3000?'risk-warn':'risk-ok');document.getElementById('rl-vega').textContent='₹'+Math.round(netVega);document.getElementById('rl-vega').style.color=va>5000?'var(--c-red)':va>3000?'var(--c-amber)':'var(--c-green)';
+  document.getElementById('rl-theta').textContent='₹'+Math.round(netTheta);document.getElementById('rl-theta').style.color=netTheta>500?'var(--c-green)':netTheta>0?'var(--c-amber)':'var(--c-red)';
+  // Status badge
+  const sb=document.getElementById('portStatus');
+  if(rows.length===0){sb.className='signal-badge sb-blue';sb.innerHTML='<span class="sb-dot"></span>No positions';}
+  else if(da>50||va>5000){sb.className='signal-badge sb-red';sb.innerHTML='<span class="sb-dot"></span>Risk Limit Breached';}
+  else if(da>30||va>3000){sb.className='signal-badge sb-amber';sb.innerHTML='<span class="sb-dot"></span>Approaching Limits';}
+  else{sb.className='signal-badge sb-green';sb.innerHTML='<span class="sb-dot"></span>Within Risk Limits';}
+}
+checkEmpty();
+</script>
+</body>
+</html>
